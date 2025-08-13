@@ -45,7 +45,7 @@ export const registerUser = async (data: RegisterInput) => {
     const verifyLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
 
     await myQueue.add("send-email", {
-      to: userData,
+      to: userData.email,
       subject: "Verify Your Email Address",
       html: `
       <div style="font-family: Arial, sans-serif; font-size: 16px; color: #333;">
