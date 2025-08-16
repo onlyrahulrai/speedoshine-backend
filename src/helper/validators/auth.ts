@@ -1,4 +1,3 @@
-import bcrypt from "bcryptjs";
 import { phoneVerify, validateEmail, validateString } from "./common";
 import User from "../../models/User";
 
@@ -53,7 +52,7 @@ export const validateRequestResetPassword = (values: any) => {
 };
 
 export const validateRequestResetPasswordConfirm = (values: any) => {
-  let errors = validateString({}, values, "password", {
+  let errors = validateString({}, values, "newPassword", {
     required: true,
     minLength: 6,
   });

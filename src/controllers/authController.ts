@@ -188,7 +188,8 @@ export class AuthController extends Controller {
         };
       }
 
-      await AuthService.confirmResetPassword(body.token, body.password);
+      await AuthService.confirmResetPassword(body.token, body.newPassword);
+      
       this.setStatus(202);
 
       return { message: "Password has been reset successfully" };

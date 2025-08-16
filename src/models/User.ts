@@ -46,6 +46,19 @@ const UserSchema: Schema = new Schema(
   { timestamps: true }
 );
 
+// Add this after defining UserSchema
+
+UserSchema.virtual("name").get(function () {
+  // Use function() to access 'this'
+  const firstName = this.firstName || "";
+  const lastName = this.lastName || "";
+  return `${firstName} ${lastName}`.trim();
+});
+
+// To include virtuals in JSON output
+UserSchema.set("toJSON", { virtuals: true });
+UserSchema.set("toObject", { virtuals: true });
+
 const User = mongoose.model<IUser>("User", UserSchema);
 
 export default User;

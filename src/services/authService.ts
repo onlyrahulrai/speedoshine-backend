@@ -94,9 +94,10 @@ export const loginUser = async (email: string, password: string) => {
     role: user.role
   }
 
-  const token = generateToken(payload, "24h");
+  const access = generateToken(payload, "24h");
+  const refresh = generateToken(payload, "7d");
 
-  return { ...userData, token };
+  return { ...userData, access, refresh };
 };
 
 export const editUserProfile = async (_id: string, data: UserResponse) =>
@@ -123,7 +124,7 @@ export const requestPasswordReset = async (email: string) => {
   const user = await User.findOne({ email });
 
   // Generate JWT token with user id and expiration (15 minutes)
-  const token = generateToken({ userId: user._id.toString() }, "15m");
+  const token = generateToken({ userId: user?._id.toString() }, "15m");
 
   const resetLink = `${process.env.FRONTEND_URL}/confirm-reset-password?token=${token}`;
 
@@ -154,8 +155,6 @@ export const confirmResetPassword = async (token: string, password: string) => {
     if (!updatedUser) {
       throw new Error("User not found");
     }
-
-    throw new Error("Hello World");
 
     return updatedUser;
   } catch (e) {
@@ -196,8 +195,7 @@ export const verifyEmail = async (token: string) => {
 
     return { message: "Email verified successfully" };
   } catch (e: any) {
-    console.error("Email verification failed:", e);
-    throw new Error(e?.message || "Invalid or expired token");
+    throw new Error("Your verification link has expired or is invalid. Please log in to request a new verification email.");
   }
 };
 

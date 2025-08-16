@@ -15,7 +15,7 @@ export interface RegisterInput {
 }
 
 export interface RequestResetPasswordConfirmInput {
-  password?: any;
+  newPassword?: any;
   confirmPassword?: any;
   token?: string;
 }
