@@ -10,7 +10,6 @@
 
 ## Deploy Script
 
-`
+```
 pm2 start src/server.ts --name digitaldetoxification --interpreter tsx
-
-`
+```
