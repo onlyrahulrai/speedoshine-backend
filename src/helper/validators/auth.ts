@@ -74,7 +74,9 @@ export const validateRequestResetPasswordConfirm = (values: any) => {
 
 export const validateEditProfile = (values: any) => {
   let errors = validateEmail({}, values);
-  validateString(errors, values, "name", { required: true });
+  validateString(errors, values, "firstName", { required: true });
+  validateString(errors, values, "lastName", { required: true });
+   validateString(errors, values, "age", { required: true });
 
   if (values.phone?.trim()) {
     phoneVerify(errors, values);

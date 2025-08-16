@@ -144,7 +144,9 @@ export class AuthController extends Controller {
   public async resendVerificationEmail(
     @Request() req: any
   ): Promise<
-    SuccessMessageResponse | ErrorMessageResponse | AuthenticationRequiredResponse
+    | SuccessMessageResponse
+    | ErrorMessageResponse
+    | AuthenticationRequiredResponse
   > {
     try {
       const user = req.user;
@@ -189,7 +191,7 @@ export class AuthController extends Controller {
       }
 
       await AuthService.confirmResetPassword(body.token, body.newPassword);
-      
+
       this.setStatus(202);
 
       return { message: "Password has been reset successfully" };
@@ -306,6 +308,7 @@ export class AuthController extends Controller {
       const user = await AuthService.changePassword(userId, body);
 
       this.setStatus(200);
+      
       return user;
     } catch (error: any) {
       this.setStatus(400);

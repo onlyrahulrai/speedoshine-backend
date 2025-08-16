@@ -2,10 +2,9 @@ import bcrypt from "bcryptjs";
 import { Queue } from "bullmq";
 import jwt from "jsonwebtoken";
 import { generateToken } from "../helper/utils/common";
-import { RegisterInput } from "../types/schema/Auth";
+import { EditProfileInput, RegisterInput } from "../types/schema/Auth";
 import User from "../models/User";
 import Role from "../models/Role";
-import { UserResponse } from "../types/schema/User";
 
 const myQueue = new Queue("Task");
 
@@ -73,10 +72,12 @@ export const registerUser = async (data: RegisterInput) => {
 export const loginUser = async (email: string, password: string) => {
   const user = await User.findOne({
     email,
-  }).populate([{
-    path:"role",
-    select:"name"
-  }]);
+  }).populate([
+    {
+      path: "role",
+      select: "name",
+    },
+  ]);
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
     throw new Error("Invalid credentials");
@@ -91,8 +92,8 @@ export const loginUser = async (email: string, password: string) => {
     email: user.email,
     phone: user.phone,
     username: user.username,
-    role: user.role
-  }
+    role: user.role,
+  };
 
   const access = generateToken(payload, "24h");
   const refresh = generateToken(payload, "7d");
@@ -100,7 +101,7 @@ export const loginUser = async (email: string, password: string) => {
   return { ...userData, access, refresh };
 };
 
-export const editUserProfile = async (_id: string, data: UserResponse) =>
+export const editUserProfile = async (_id: string, data: EditProfileInput) =>
   await User.findByIdAndUpdate(_id, { $set: data }, { new: true });
 
 export const changePassword = async (
@@ -164,16 +165,14 @@ export const confirmResetPassword = async (token: string, password: string) => {
 };
 
 export const getUserDetails = async (userId: string) => {
-  const user = await User.findById(userId).populate([{
-    path:"role",
-    select:"name"
-  }]);
+  const userInstance = await User.findById(userId)
+    .populate({ path: "role", select: "name" })
 
-  if (!user) {
+  if (!userInstance) {
     throw new Error("We couldn’t find an account matching those details.");
   }
 
-  return user;
+  return userInstance
 };
 
 export const verifyEmail = async (token: string) => {
@@ -195,7 +194,9 @@ export const verifyEmail = async (token: string) => {
 
     return { message: "Email verified successfully" };
   } catch (e: any) {
-    throw new Error("Your verification link has expired or is invalid. Please log in to request a new verification email.");
+    throw new Error(
+      "Your verification link has expired or is invalid. Please log in to request a new verification email."
+    );
   }
 };
 

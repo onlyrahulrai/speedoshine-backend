@@ -11,6 +11,7 @@ export interface UserResponse {
   _id: string; // MongoDB ObjectId as string
   firstName: string;
   lastName: string;
+  name?: string;
   username?: any;
   email: string;
   phone?: string;
