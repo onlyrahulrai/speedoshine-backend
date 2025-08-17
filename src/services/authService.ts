@@ -5,6 +5,7 @@ import { generateToken } from "../helper/utils/common";
 import { EditProfileInput, RegisterInput } from "../types/schema/Auth";
 import User from "../models/User";
 import Role from "../models/Role";
+import { TokenBlacklist } from "../models/TokenBlacklist";
 
 const myQueue = new Queue("Task");
 
@@ -141,6 +142,12 @@ export const requestPasswordReset = async (email: string) => {
 
 export const confirmResetPassword = async (token: string, password: string) => {
   try {
+    const blacklisted = await TokenBlacklist.findOne({ token });
+
+    if (blacklisted) {
+      throw new Error("Invalid or expired token");
+    }
+
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
       userId: string;
     };
@@ -157,6 +164,14 @@ export const confirmResetPassword = async (token: string, password: string) => {
       throw new Error("User not found");
     }
 
+    // Blacklist the used token immediately
+    await TokenBlacklist.create({
+      token,
+      user: payload.userId,
+      reason: "PASSWORD_RESET",
+      expiresAt: new Date(), // optional, just to have a timestamp
+    });
+
     return updatedUser;
   } catch (e) {
     console.error("Error: ", e);
@@ -165,18 +180,26 @@ export const confirmResetPassword = async (token: string, password: string) => {
 };
 
 export const getUserDetails = async (userId: string) => {
-  const userInstance = await User.findById(userId)
-    .populate({ path: "role", select: "name" })
+  const userInstance = await User.findById(userId).populate({
+    path: "role",
+    select: "name",
+  });
 
   if (!userInstance) {
     throw new Error("We couldn’t find an account matching those details.");
   }
 
-  return userInstance
+  return userInstance.toObject();
 };
 
 export const verifyEmail = async (token: string) => {
   try {
+    const blacklisted = await TokenBlacklist.findOne({ token });
+
+    if (blacklisted) {
+      throw new Error("Invalid verification token") as any;
+    }
+
     const payload = jwt.verify(token, process.env.JWT_SECRET!) as {
       userId: string;
     };
@@ -189,8 +212,18 @@ export const verifyEmail = async (token: string) => {
     );
 
     if (!user) {
-      throw new Error("User not found");
+      throw new Error(
+        "Your verification link has expired or is invalid. Please log in to request a new verification email."
+      );
     }
+
+    // Blacklist the used token immediately
+    await TokenBlacklist.create({
+      token,
+      user: payload.userId,
+      reason: "EMAIL_VERIFICATION",
+      expiresAt: new Date(), // optional, just to have a timestamp
+    });
 
     return { message: "Email verified successfully" };
   } catch (e: any) {
@@ -240,5 +273,28 @@ export const resendVerificationEmail = async (user: any) => {
       error.message ||
         "❌ We couldn’t send the verification email. Please check your email address or try again shortly."
     );
+  }
+};
+
+export const logout = async (req: any) => {
+  try {
+    const authHeader = req.headers["authorization"];
+    if (!authHeader) throw new Error("No token provided");
+
+    const token = authHeader.split(" ")[1];
+    if (!token) throw new Error("Invalid token format");
+
+    const decoded: any = jwt.decode(token);
+    if (!decoded || !decoded.exp) throw new Error("Invalid token");
+
+    await TokenBlacklist.create({
+      token,
+      user: decoded._id || undefined,
+      reason: "LOGOUT",
+      expiresAt: new Date(decoded.exp * 1000),
+    });
+  } catch (error) {
+    console.error("Logout service error:", error);
+    throw error; // re-throw to let controller handle response
   }
 };

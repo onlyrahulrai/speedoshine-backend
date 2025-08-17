@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { Request } from "express";
+import { TokenBlacklist } from "../models/TokenBlacklist";
 
 export const expressAuthentication = async (
   request: Request,
@@ -15,6 +16,15 @@ export const expressAuthentication = async (
     }
 
     const token = authHeader.split(" ")[1];
+
+    // Check if token is blacklisted
+    const blacklisted = await TokenBlacklist.findOne({ token });
+
+    if (blacklisted) {
+      const err = new Error("Invalid or expired token") as any;
+      err.status = 401;
+      throw err;
+    }
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET!);

@@ -8,7 +8,7 @@ export interface LoginInput {
 export interface RegisterInput {
   firstName?: any;
   lastName?: any;
-  email?:any;
+  email?: any;
   age?: any;
   password?: any;
   confirmPassword?: any;
@@ -17,7 +17,7 @@ export interface RegisterInput {
 export interface RequestResetPasswordConfirmInput {
   newPassword?: any;
   confirmPassword?: any;
-  token?: string;
+  token: string;
 }
 
 export interface VerifyEmailInput {
@@ -37,9 +37,11 @@ export interface EditProfileInput {
 }
 
 export interface AuthUserResponse extends UserResponse {
-  token: string;
+  access: string;
+  refresh: string;
+  __v?: number;
 }
 
 export interface AuthenticationRequiredResponse {
-  message?: string
+  message?: string;
 }

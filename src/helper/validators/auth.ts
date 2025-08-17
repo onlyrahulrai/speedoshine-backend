@@ -1,5 +1,6 @@
 import { phoneVerify, validateEmail, validateString } from "./common";
 import User from "../../models/User";
+import { TokenBlacklist } from "../../models/TokenBlacklist";
 
 export const validateRegister = async (values: any) => {
   let errors: Record<string, string> = {};
@@ -51,20 +52,23 @@ export const validateRequestResetPassword = (values: any) => {
   return errors;
 };
 
-export const validateRequestResetPasswordConfirm = (values: any) => {
-  let errors = validateString({}, values, "newPassword", {
+export const validateRequestResetPasswordConfirm = async (values: any) => {
+  let errors: Record<string, string> = {};
+
+  validateString(errors, values, "newPassword", {
     required: true,
     minLength: 6,
   });
+
   validateString(errors, values, "confirmPassword", {
     required: true,
     minLength: 6,
   });
 
   if (
-    values.password &&
+    values.newPassword &&
     values.confirmPassword &&
-    values.password !== values.confirmPassword
+    values.newPassword !== values.confirmPassword
   ) {
     errors.confirmPassword = "Passwords do not match.";
   }
@@ -76,7 +80,7 @@ export const validateEditProfile = (values: any) => {
   let errors = validateEmail({}, values);
   validateString(errors, values, "firstName", { required: true });
   validateString(errors, values, "lastName", { required: true });
-   validateString(errors, values, "age", { required: true });
+  validateString(errors, values, "age", { required: true });
 
   if (values.phone?.trim()) {
     phoneVerify(errors, values);

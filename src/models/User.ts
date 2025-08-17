@@ -56,8 +56,22 @@ UserSchema.virtual("name").get(function () {
 });
 
 // To include virtuals in JSON output
-UserSchema.set("toJSON", { virtuals: true });
-UserSchema.set("toObject", { virtuals: true });
+UserSchema.set("toJSON", {
+  virtuals: true,
+  transform: (_doc, ret) => {
+    delete ret.id;
+
+    return ret;
+  },
+});
+UserSchema.set("toObject", {
+  virtuals: true,
+  transform: (_doc, ret) => {
+    delete ret.id;
+
+    return ret;
+  },
+});
 
 const User = mongoose.model<IUser>("User", UserSchema);
 

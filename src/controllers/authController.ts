@@ -35,6 +35,8 @@ import {
   FieldValidationError,
   SuccessMessageResponse,
 } from "../types/schema/Common";
+import { TokenBlacklist } from "../models/TokenBlacklist";
+import jwt from "jsonwebtoken";
 
 @Route("auth")
 @Tags("Auth")
@@ -180,7 +182,7 @@ export class AuthController extends Controller {
     { message: string } | FieldValidationError | ErrorMessageResponse
   > {
     try {
-      const errors = validateRequestResetPasswordConfirm(body);
+      const errors = await validateRequestResetPasswordConfirm(body);
 
       if (Object.keys(errors).length > 0) {
         this.setStatus(422);
@@ -209,7 +211,9 @@ export class AuthController extends Controller {
   ): Promise<{ message: string } | ErrorMessageResponse> {
     try {
       const result = await AuthService.verifyEmail(body.token);
+
       this.setStatus(202);
+
       return { message: "Email verified successfully" };
     } catch (error: any) {
       this.setStatus(400);
@@ -308,7 +312,7 @@ export class AuthController extends Controller {
       const user = await AuthService.changePassword(userId, body);
 
       this.setStatus(200);
-      
+
       return user;
     } catch (error: any) {
       this.setStatus(400);
@@ -343,6 +347,21 @@ export class AuthController extends Controller {
     } catch (error: any) {
       this.setStatus(400);
       return { message: error?.message || "Invalid request" };
+    }
+  }
+
+  @Post("logout")
+  @Security("jwt")
+  @SuccessResponse("200", "Successfully logged out")
+  @Response("401", "Unauthorized")
+  public async logout(@Request() req: any): Promise<{ message: string }> {
+    try {
+      await AuthService.logout(req);
+
+      return { message: "Successfully logged out" };
+    } catch (error) {
+      this.setStatus(401);
+      return { message: "Invalid token" };
     }
   }
 }

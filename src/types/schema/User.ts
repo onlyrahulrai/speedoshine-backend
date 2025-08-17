@@ -8,7 +8,7 @@ export interface UserRequest {
 }
 
 export interface UserResponse {
-  _id: string; // MongoDB ObjectId as string
+  _id?: string; // MongoDB ObjectId as string
   firstName: string;
   lastName: string;
   name?: string;
@@ -22,8 +22,8 @@ export interface UserResponse {
   isActive?: boolean;
   isVerified?: boolean;
   role?: any;
-  createdAt: string;
-  updatedAt: string;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 export interface UserListResponse {
