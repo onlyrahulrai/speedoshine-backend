@@ -1,23 +1,53 @@
-import mongoose from "mongoose";
+import mongoose, { Document } from "mongoose";
 
-const OptionSchema = new mongoose.Schema({
-  text: { type: String, required: true },
-  isCorrect: { type: Boolean, default: false },
+interface Option {
+  text?: string;
+  correct?: boolean;
+}
+
+interface QuestionDoc extends Document {
+  questionText: string;
+  questionType:
+    | "multiple_choice"
+    | "true_false"
+    | "essay"
+    | "short_answer"
+    | "fill_blank"
+    | "matching_pairs";
+  options: Option[];
+  media: {
+    image: string | null;
+    video: string | null;
+    audio: string | null;
+  };
+  points: number;
+  timeLimit: number;
+}
+
+const OptionSchema = new mongoose.Schema<Option>({
+  text: { type: String, required: false },
+  correct: { type: Boolean, default: false },
 });
 
-const QuestionSchema = new mongoose.Schema(
+const QuestionSchema = new mongoose.Schema<QuestionDoc>(
   {
     questionText: { type: String, required: true },
     questionType: {
       type: String,
-      enum: ["multiple_choice", "true_false", "fill_blank", "matching_pairs"],
+      enum: ["multiple_choice", "true_false", "fill_blank", "matching_pairs", "essay", "short_answer"],
       default: "multiple_choice",
     },
     options: {
       type: [OptionSchema],
       validate: {
-        validator: (opts: any[]) => opts.length > 0,
-        message: "At least one option is required.",
+        validator: function (this: QuestionDoc, opts: any[]) {
+          if (this.questionType === "multiple_choice") {
+            return opts && opts.length > 0;
+          }
+          return true;
+        },
+        message:
+          "At least one option is required for multiple choice questions.",
       },
     },
     media: {

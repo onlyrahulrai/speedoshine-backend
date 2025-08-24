@@ -1,13 +1,21 @@
 // Represents a single question option
 export interface Option {
+  _id?: string;
   text: string;
-  isCorrect?: boolean;
+  correct?: boolean;
 }
 
 // Question structure in a quiz
 export interface Question {
+  _id?: string;
   questionText: string;
-  questionType: "multiple_choice" | "true_false" | "fill_blank" | "matching_pairs";
+  questionType:
+    | "multiple_choice"
+    | "true_false"
+    | "essay"
+    | "short_answer"
+    | "fill_blank"
+    | "matching_pairs";
   options?: Option[];
   media?: {
     image?: string;
@@ -16,6 +24,9 @@ export interface Question {
   };
   points?: number;
   timeLimit?: number;
+  __v?: number;
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 // Request body for creating/updating a quiz
@@ -28,27 +39,30 @@ export interface QuizRequest {
   category?: string;
   difficulty?: "easy" | "medium" | "hard";
   tags?: string[];
-  questions: Question[];
   totalMarks?: number;
   timeLimit?: number;
   shuffleQuestions?: boolean;
   shuffleOptions?: boolean;
   allowBackNavigation?: boolean;
-  nextQuiz?: string; // Quiz ID
+  nextQuiz?: string | null; // Quiz ID
   visibility?: "public" | "private" | "unlisted";
   scheduledAt?: string; // ISO date string
+  questions: Question[];
   isActive?: boolean;
+  createdBy?: string; // user id
 }
 
 // Response after creating or fetching a quiz
 export interface QuizResponse extends QuizRequest {
-  _id: string;
-  createdBy: string; // user id
-  attemptsCount: number;
-  averageScore: number;
-  createdAt: string;
-  updatedAt: string;
+  _id?: string;
+  attemptsCount?: number;
+  averageScore?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  __v?: number;
 }
+
+export interface QuizUpdateRequest extends Partial<QuizResponse> {}
 
 // List response for multiple quizzes
 export interface QuizListResponse {

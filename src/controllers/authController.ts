@@ -35,8 +35,6 @@ import {
   FieldValidationError,
   SuccessMessageResponse,
 } from "../types/schema/Common";
-import { TokenBlacklist } from "../models/TokenBlacklist";
-import jwt from "jsonwebtoken";
 
 @Route("auth")
 @Tags("Auth")
@@ -93,7 +91,21 @@ export class AuthController extends Controller {
 
       this.setStatus(201);
 
-      return user;
+      // Ensure createdAt and updatedAt are present for UserResponse
+      return {
+        ...user,
+        _id: user._id?.toString(),
+        createdAt: (user as any).createdAt ?? new Date(),
+        updatedAt: (user as any).updatedAt ?? new Date(),
+        firstName: user.firstName ?? "",
+        lastName: user.lastName ?? "",
+        username: user.username ?? "",
+        email: user.email ?? "",
+        phone: user.phone ?? "",
+        age: user.age ?? 0,
+        address: user.address ?? "",
+        profile: user.profile ?? "",
+      };
     } catch (error: any) {
       console.error("Registration error:", error);
       this.setStatus(400);
@@ -121,7 +133,7 @@ export class AuthController extends Controller {
         };
       }
 
-      await AuthService.requestPasswordReset(body.email);
+      await AuthService.requestPasswordReset(body.email as string);
 
       this.setStatus(200);
 
@@ -351,7 +363,6 @@ export class AuthController extends Controller {
   }
 
   @Post("logout")
-  @Security("jwt")
   @SuccessResponse("200", "Successfully logged out")
   @Response("401", "Unauthorized")
   public async logout(@Request() req: any): Promise<{ message: string }> {

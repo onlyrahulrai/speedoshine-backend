@@ -19,6 +19,7 @@ import {
   QuizListResponse,
   QuizRequest,
   QuizResponse,
+  QuizUpdateRequest,
 } from "../types/schema/Quiz";
 
 import {
@@ -27,13 +28,17 @@ import {
   SuccessMessageResponse,
 } from "../types/schema/Common";
 import { AuthenticationRequiredResponse } from "../types/schema/Auth";
+import { validateManageAssessment } from "../helper/validators/assessment";
 
 @Route("quizzes")
 @Tags("Quiz")
 export class QuizController extends Controller {
-  @Security("jwt")
+  // @Security("jwt")
   @Get("/")
-  @SuccessResponse<QuizListResponse>(200, "List of quizzes retrieved successfully")
+  @SuccessResponse<QuizListResponse>(
+    200,
+    "List of quizzes retrieved successfully"
+  )
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   @Response<ErrorMessageResponse>(400, "Invalid request")
   public async getQuizzes(
@@ -44,7 +49,7 @@ export class QuizController extends Controller {
     @Query() limit?: number
   ): Promise<QuizListResponse> {
     // Convert comma-separated tags string to array if provided
-    const tagsArray = tags ? tags.split(",").map(t => t.trim()) : undefined;
+    const tagsArray = tags ? tags.split(",").map((t) => t.trim()) : undefined;
 
     return await QuizService.getAllQuizzes({
       category,
@@ -69,8 +74,20 @@ export class QuizController extends Controller {
   @SuccessResponse<QuizResponse>(201, "Quiz created successfully")
   @Response<FieldValidationError>(422, "Validation error")
   @Response<ErrorMessageResponse>(400, "Invalid request parameters")
-  public async createQuiz(@Body() body: QuizRequest): Promise<QuizResponse> {
-    return QuizService.createQuiz(body);
+  public async createQuiz(@Body() body: QuizRequest): Promise<QuizResponse | FieldValidationError | ErrorMessageResponse> {
+     try {
+      const errors = await validateManageAssessment(body);
+
+      if (Object.keys(errors).length > 0) {
+        this.setStatus(422);
+        return { type:"fields", errors };
+      }
+
+      return await QuizService.createQuiz(body);
+    } catch (error: any) {
+      this.setStatus(400);
+      return { message: error?.message || "Failed to update quiz" };
+    }
   }
 
   @Security("jwt")
@@ -81,9 +98,24 @@ export class QuizController extends Controller {
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   public async updateQuiz(
     @Path() id: string,
-    @Body() body: QuizRequest
-  ): Promise<QuizResponse> {
-    return QuizService.updateQuiz(id, body);
+    @Body() body: QuizUpdateRequest
+  ): Promise<QuizResponse | FieldValidationError | ErrorMessageResponse> {
+    try {
+      const errors = await validateManageAssessment(body);
+
+      if (Object.keys(errors).length > 0) {
+        this.setStatus(422);
+        return { type:"fields", errors };
+      }
+
+      const quiz = await QuizService.updateQuiz(id, body);
+
+      return quiz;
+    } catch (error: any) {
+      console.error("---------- Error creating quiz ----------:", error.message);
+      this.setStatus(400);
+      return { message: error?.message || "Failed to update quiz" };
+    }
   }
 
   @Security("jwt")
