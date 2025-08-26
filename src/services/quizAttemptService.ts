@@ -11,8 +11,12 @@ export async function startAttempt(
   userId: string
 ): Promise<QuizAttemptResponse> {
   const quiz = await QuizModel.findById(quizId).populate("questions");
-  if (!quiz || !quiz.isActive) throw new Error("Quiz not found or inactive");
 
+  if (!quiz || !quiz.isActive) {
+    throw new Error("Quiz not found or inactive");
+  }
+
+  // check if an in-progress attempt already exists
   let attempt = await QuizAttemptModel.findOne({
     quiz: quizId,
     user: userId,
@@ -23,15 +27,22 @@ export async function startAttempt(
     return mapAttemptToResponse(attempt);
   }
 
-  // Shuffle questions and save order
-  const questionIds = quiz.questions.map((q) => q._id);
-  const shuffledQuestionIds = shuffleArray(questionIds);
+  // shuffle questions
+  const shuffledQuestions = shuffleArray(quiz.questions);
+
+  // for each question, shuffle its answers and store in attempt
+  const questionsWithShuffledAnswers = shuffledQuestions.map((q) => ({
+    questionId: q._id,
+    text: q.text,
+    options: shuffleArray(q.options), // assuming `options` holds answers
+    correctAnswer: q.correctAnswer,   // ⚠️ store it for validation
+  }));
 
   attempt = new QuizAttemptModel({
     quiz: quizId,
     user: userId,
+    questions: questionsWithShuffledAnswers, // now storing whole set
     answers: [],
-    questionsOrder: shuffledQuestionIds,
     currentQuestionIndex: 0,
     score: 0,
     percentage: 0,

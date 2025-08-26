@@ -5,9 +5,10 @@ import QuestionModel from "../models/Question"; // mongoose Question model
 interface PaginationParams {
   page?: number;
   limit?: number;
-  category: string;
-  difficulty: string;
-  tags: string[];
+  category?: string;
+  difficulty?: string;
+  tags?: string[];
+  search?: string;
 }
 
 export async function getAllQuizzes({
@@ -16,6 +17,7 @@ export async function getAllQuizzes({
   category,
   difficulty,
   tags,
+  search
 }: PaginationParams) {
   const skip = (page - 1) * limit;
 
@@ -32,6 +34,10 @@ export async function getAllQuizzes({
 
   if (tags && tags.length > 0) {
     query.tags = { $in: tags };
+  }
+
+  if (search) {
+    query.title = { $regex: search, $options: "i" };
   }
 
   const [results, total] = await Promise.all([

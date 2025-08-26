@@ -46,7 +46,8 @@ export class QuizController extends Controller {
     @Query() difficulty?: string,
     @Query() tags?: string,
     @Query() page?: number,
-    @Query() limit?: number
+    @Query() limit?: number,
+    @Query() search?: string,
   ): Promise<QuizListResponse> {
     // Convert comma-separated tags string to array if provided
     const tagsArray = tags ? tags.split(",").map((t) => t.trim()) : undefined;
@@ -57,6 +58,7 @@ export class QuizController extends Controller {
       tags: tagsArray,
       page,
       limit,
+      search
     });
   }
 

@@ -36,6 +36,7 @@ export interface QuizRequest {
   tagline?: string;
   description?: string;
   features?: string[];
+  focusAreas?: string[];
   category?: string;
   difficulty?: "easy" | "medium" | "hard";
   tags?: string[];

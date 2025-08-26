@@ -7,6 +7,7 @@ const QuizSchema = new mongoose.Schema(
     tagline: { type: String },
     description: { type: String },
     features: [String],
+    focusAreas: [String],
     category: { type: String, index: true },
     difficulty: {
       type: String,
@@ -38,7 +39,11 @@ const QuizSchema = new mongoose.Schema(
     },
 
     // Creator & access
-    createdBy: { type: mongoose.Schema.Types.ObjectId, ref: "User", index: true },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
+      index: true,
+    },
     visibility: {
       type: String,
       enum: ["public", "private", "unlisted"],

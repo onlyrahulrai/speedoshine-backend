@@ -5,21 +5,9 @@ const QuizAttemptSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     quiz: { type: mongoose.Schema.Types.ObjectId, ref: "Quiz", required: true },
 
-    // Store answers for each question
-    answers: [
-      {
-        questionId: { type: mongoose.Schema.Types.ObjectId, required: true },
-        selectedOptions: [String], // user’s selected answer(s)
-        isCorrect: Boolean,
-        timeTaken: Number // in seconds for this question
-      }
-    ],
+    questions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Question", required: true }],
+    answers: [{ type: mongoose.Schema.Types.ObjectId, ref: "Answer", required: true }],
 
-    // Randomized question order for this attempt (added)
-    questionsOrder: [
-      { type: mongoose.Schema.Types.ObjectId, ref: "Question", required: true }
-    ],
-    
     currentQuestionIndex: { type: Number, default: 0 },
 
     score: { type: Number, default: 0 },
@@ -29,22 +17,21 @@ const QuizAttemptSchema = new mongoose.Schema(
 
     startedAt: { type: Date, default: Date.now },
     completedAt: { type: Date },
-    timeTaken: { type: Number }, // in seconds for whole quiz
+    timeTaken: { type: Number }, // total time in seconds
 
     status: {
       type: String,
       enum: ["in_progress", "completed"],
-      default: "in_progress"
+      default: "in_progress",
     },
 
-    // For "continue to next quiz" feature
     nextQuizUnlocked: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Quiz",
-      default: null
-    }
+      default: null,
+    },
   },
   { timestamps: true }
 );
 
-module.exports = mongoose.model("QuizAttempt", QuizAttemptSchema);
+export default mongoose.model("QuizAttempt", QuizAttemptSchema);

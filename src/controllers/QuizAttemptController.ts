@@ -7,6 +7,7 @@ import {
   Tags,
   Path,
   Body,
+  Request,
   Security,
   SuccessResponse,
   Response,
@@ -14,14 +15,11 @@ import {
 
 import * as QuizAttemptService from "../services/quizAttemptService";
 import {
-  QuizAttemptListResponse,
   QuizAttemptResponse,
   SubmitAnswersRequest,
 } from "../types/schema/QuizAttempt";
 
-import {
-  ErrorMessageResponse,
-} from "../types/schema/Common";
+import { ErrorMessageResponse } from "../types/schema/Common";
 import { AuthenticationRequiredResponse } from "../types/schema/Auth";
 import { QuestionResponse } from "../types/schema/Question";
 
@@ -29,7 +27,6 @@ import { QuestionResponse } from "../types/schema/Question";
 @Tags("QuizAttempt")
 export class QuizAttemptController extends Controller {
   private getCurrentUserId(): string {
-    // Adapt this according to your auth middleware (example: Express request user)
     return (this.request as any).user.id;
   }
 
@@ -38,9 +35,16 @@ export class QuizAttemptController extends Controller {
   @SuccessResponse<QuizAttemptResponse>(201, "Quiz attempt started")
   @Response<ErrorMessageResponse>(400, "Invalid quiz id or user")
   public async startAttempt(
+    @Request() req: any,
     @Path() quizId: string
   ): Promise<QuizAttemptResponse> {
-    const userId = this.getCurrentUserId();
+    const userId = req.user?._id; 
+
+    if (!quizId || !userId) {
+      this.setStatus(400);
+      return { message: "Invalid quiz id or user" } as any;
+    }
+
     return QuizAttemptService.startAttempt(quizId, userId);
   }
 
@@ -68,9 +72,15 @@ export class QuizAttemptController extends Controller {
 
   @Security("jwt")
   @Get("{attemptId}/next-question")
-  @SuccessResponse<QuestionResponse>(200, "Next question retrieved successfully")
+  @SuccessResponse<QuestionResponse>(
+    200,
+    "Next question retrieved successfully"
+  )
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
-  @Response<ErrorMessageResponse>(400, "Invalid attempt id or no more questions")
+  @Response<ErrorMessageResponse>(
+    400,
+    "Invalid attempt id or no more questions"
+  )
   public async getNextQuestion(
     @Path() attemptId: string
   ): Promise<QuestionResponse> {
