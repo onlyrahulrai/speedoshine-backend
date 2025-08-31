@@ -6,11 +6,13 @@ import {
   Route,
   Tags,
   Security,
+  Request,
   SuccessResponse,
   Response,
 } from "tsoa";
 
 import * as QuizAttemptService from "../services/quizAttemptService";
+import * as AnalyticsService from "../services/analyticsService";
 import {
   QuizAttemptResponse,
   QuizAttemptListResponse,
@@ -20,9 +22,11 @@ import {
   ErrorMessageResponse,
   SuccessMessageResponse,
 } from "../types/schema/Common";
-
 import { AuthenticationRequiredResponse } from "../types/schema/Auth";
-import { LeaderboardResponse, QuizStatsResponse } from "../types/schema/Analytics";
+import {
+  LeaderboardResponse,
+  QuizStatsResponse,
+} from "../types/schema/Analytics";
 
 @Route("analytics")
 @Tags("Analytics")
@@ -32,14 +36,21 @@ export class AnalyticsController extends Controller {
   }
 
   @Security("jwt")
-  @Get("attempts/{attemptId}/results")
+  @Get("{attemptId}/results")
   @SuccessResponse<QuizAttemptResponse>(200, "Quiz attempt results retrieved")
   @Response<ErrorMessageResponse>(400, "Invalid attempt id")
   public async getAttemptResults(
-    @Path() attemptId: string
+    @Path() attemptId: string,
+    @Request() req: any
   ): Promise<QuizAttemptResponse> {
-    const userId = this.getCurrentUserId();
-    return QuizAttemptService.getAttemptById(attemptId, userId);
+    const userId = req.user?._id;
+
+    if (!userId) {
+      this.setStatus(400);
+      return { message: "Invalid User or unauthorized" } as any;
+    }
+
+    return AnalyticsService.getAttemptById(attemptId, userId);
   }
 
   @Security("jwt")

@@ -13,7 +13,7 @@ export interface QuestionMedia {
 export interface QuestionResponse {
   id: string; // Question ID
   questionText: string;
-  questionType: "multiple_choice" | "true_false" | "fill_blank" | "matching_pairs";
+  questionType: "radio_choice" | "multiple_choice" | "true_false" | "fill_blank" | "essay" | "short_answer";
   options: QuestionOption[];
   media?: QuestionMedia;
   points: number;

@@ -7,10 +7,17 @@ export async function getAttemptById(
   attemptId: string,
   userId: string
 ): Promise<QuizAttemptResponse> {
-  const attempt = await QuizAttemptModel.findById(attemptId);
+  const attempt = await QuizAttemptModel.findById(attemptId).select("-questions -__v").populate([
+    {
+      path:"quiz",
+      select:"title subtitle tagline description timeLimit"
+    }
+  ]);
+
   if (!attempt) throw new Error("Attempt not found");
   if (attempt.user.toString() !== userId) throw new Error("Unauthorized access");
-  return mapAttemptToResponse(attempt);
+
+  return attempt;
 }
 
 export async function getUserAttempts(

@@ -5,7 +5,7 @@ const AnswerSchema = new mongoose.Schema(
     questionId: { type: mongoose.Schema.Types.ObjectId, ref: "Question", required: true },
     questionType: {
       type: String,
-      enum: ["multiple_choice", "true_false", "essay", "short_answer", "fill_blank", "matching_pairs"],
+      enum: ["radio_choice", "multiple_choice", "true_false", "essay", "short_answer", "fill_blank", "matching_pairs"],
       required: true,
     },
     // User’s answer(s) - flexible based on type
