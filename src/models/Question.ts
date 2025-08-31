@@ -8,12 +8,12 @@ interface Option {
 interface QuestionDoc extends Document {
   questionText: string;
   questionType:
+    | "radio_choice"
     | "multiple_choice"
+    | "fill_blank"
     | "true_false"
     | "essay"
-    | "short_answer"
-    | "fill_blank"
-    | "matching_pairs";
+    | "short_answer";
   options: Option[];
   media: {
     image: string | null;
@@ -24,7 +24,7 @@ interface QuestionDoc extends Document {
   timeLimit: number;
 }
 
-const OptionSchema = new mongoose.Schema<Option>({
+export const OptionSchema = new mongoose.Schema<Option>({
   text: { type: String, required: false },
   correct: { type: Boolean, default: false },
 });
@@ -34,14 +34,21 @@ const QuestionSchema = new mongoose.Schema<QuestionDoc>(
     questionText: { type: String, required: true },
     questionType: {
       type: String,
-      enum: ["multiple_choice", "true_false", "fill_blank", "matching_pairs", "essay", "short_answer"],
+      enum: [
+        "radio_choice",
+        "multiple_choice",
+        "true_false",
+        "fill_blank",
+        "essay",
+        "short_answer",
+      ],
       default: "multiple_choice",
     },
     options: {
       type: [OptionSchema],
       validate: {
         validator: function (this: QuestionDoc, opts: any[]) {
-          if (this.questionType === "multiple_choice") {
+          if (["multiple_choice", "radio_choice", "true_false"].includes(this.questionType)) {
             return opts && opts.length > 0;
           }
           return true;

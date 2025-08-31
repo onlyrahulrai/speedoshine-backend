@@ -15,7 +15,7 @@ export interface Question {
     | "essay"
     | "short_answer"
     | "fill_blank"
-    | "matching_pairs";
+    | "radio_choice";
   options?: Option[];
   media?: {
     image?: string;

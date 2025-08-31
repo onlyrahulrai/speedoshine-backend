@@ -5,8 +5,10 @@ const QuizAttemptSchema = new mongoose.Schema(
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
     quiz: { type: mongoose.Schema.Types.ObjectId, ref: "Quiz", required: true },
 
-    questions: [{ type: mongoose.Schema.Types.ObjectId, ref: "Question", required: true }],
-    answers: [{ type: mongoose.Schema.Types.ObjectId, ref: "Answer", required: true }],
+    questions: [{
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "UserQuestion",
+    }], // use the UserQuestionSchema for questions
 
     currentQuestionIndex: { type: Number, default: 0 },
 

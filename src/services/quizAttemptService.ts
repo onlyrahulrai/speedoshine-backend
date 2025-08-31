@@ -1,15 +1,16 @@
 import QuizAttemptModel from "../models/QuizAttempt";
 import QuizModel from "../models/Quiz";
+import UserQuestionModel from "../models/UserQuestion";
 import mongoose from "mongoose";
-import { SubmitAnswersRequest, QuizAttemptResponse } from "../types/schema/QuizAttempt";
+import {
+  SubmitAnswersRequest,
+  QuizAttemptResponse,
+} from "../types/schema/QuizAttempt";
 import { QuestionResponse } from "../types/schema/Question";
-import shuffleArray from "../helper/utils/shuffleArray";
 import { QuizAttemptListResponse } from "../types/schema/QuizAttempt";
+import { shuffle } from "../helper/utils/common";
 
-export async function startAttempt(
-  quizId: string,
-  userId: string
-): Promise<QuizAttemptResponse> {
+export async function startAttempt(quizId: string, userId: string) {
   const quiz = await QuizModel.findById(quizId).populate("questions");
 
   if (!quiz || !quiz.isActive) {
@@ -21,158 +22,300 @@ export async function startAttempt(
     quiz: quizId,
     user: userId,
     status: "in_progress",
-  });
+  }).populate([
+    {
+      path: "questions",
+      populate: {
+        path: "question",
+        select: "_id questionText questionType media points timeLimit",
+      },
+    },
+  ]);
 
-  if (attempt) {
-    return mapAttemptToResponse(attempt);
+  if (!attempt) {
+    // create new attempt
+    attempt = await new QuizAttemptModel({
+      quiz: quizId,
+      user: userId,
+      currentQuestionIndex: 0,
+      score: 0,
+      percentage: 0,
+      correctAnswers: 0,
+      incorrectAnswers: 0,
+      startedAt: new Date(),
+      status: "in_progress",
+    }).save();
+
+    let questions = [...quiz.questions];
+
+    // Shuffle questions if enabled
+    if (quiz.shuffleQuestions) questions = shuffle(questions);
+
+    // Prepare userQuestions
+    const userQuestions = await Promise.all(
+      questions.map(async (question: any) => {
+        let options = [...question.options];
+
+        if (quiz.shuffleOptions) {
+          options = shuffle(options, "options");
+        }
+
+        const userQuestion = new UserQuestionModel({
+          attempt: attempt._id,
+          question: question._id,
+          options,
+        });
+
+        return userQuestion.save();
+      })
+    );
+
+    attempt.questions = userQuestions.map((uq) => uq._id);
+
+    attempt = await attempt.save();
+
+    attempt = await attempt.populate([
+      {
+        path: "questions",
+        populate: {
+          path: "question",
+          select: "_id questionText questionType media points timeLimit",
+        },
+      },
+    ]);
   }
 
-  // shuffle questions
-  const shuffledQuestions = shuffleArray(quiz.questions);
+  return attempt;
+}
 
-  // for each question, shuffle its answers and store in attempt
-  const questionsWithShuffledAnswers = shuffledQuestions.map((q) => ({
-    questionId: q._id,
-    text: q.text,
-    options: shuffleArray(q.options), // assuming `options` holds answers
-    correctAnswer: q.correctAnswer,   // ⚠️ store it for validation
-  }));
+export async function getAttemptById(
+  attemptId: string,
+  userId: string,
+  page?: number
+) {
+  const attempt = await QuizAttemptModel.findById(attemptId)
+    .populate([
+      {
+        path: "quiz",
+        select: "_id title description timeLimit",
+      },
+      {
+        path: "questions",
+        populate: {
+          path: "question",
+          select: "_id questionText questionType media points timeLimit",
+        },
+      },
+    ])
+    .lean();
 
-  attempt = new QuizAttemptModel({
-    quiz: quizId,
-    user: userId,
-    questions: questionsWithShuffledAnswers, // now storing whole set
-    answers: [],
-    currentQuestionIndex: 0,
-    score: 0,
-    percentage: 0,
-    correctAnswers: 0,
-    incorrectAnswers: 0,
-    startedAt: new Date(),
-    status: "in_progress",
-  });
+  if (!attempt) throw new Error("Attempt not found");
 
-  await attempt.save();
+  if (attempt.user.toString() !== userId) throw new Error("Unauthorized");
 
-  return mapAttemptToResponse(attempt);
+  if (attempt.status === "completed") throw new Error("Quiz already completed");
+
+  const total = attempt.questions.length;
+
+  // === Pagination response shape ===
+  let currentQuestionIndex = page
+    ? page - 1
+    : attempt.currentQuestionIndex || 0;
+  currentQuestionIndex = Math.max(0, Math.min(currentQuestionIndex, total - 1));
+
+  const currentPage = currentQuestionIndex + 1;
+
+  // Update progress in DB
+  await QuizAttemptModel.updateOne(
+    { _id: attemptId },
+    { $set: { currentQuestionIndex: currentQuestionIndex } }
+  );
+
+  const result = attempt.questions[currentQuestionIndex];
+
+  return {
+    meta: {
+      total,
+      page: currentPage,
+      has_next: currentPage < total,
+      has_prev: currentPage > 1,
+    },
+    quiz: attempt.quiz,
+    result,
+  };
 }
 
 export async function getNextQuestion(
   attemptId: string,
-  userId: string
+  userId: string,
+  body: any
 ): Promise<QuestionResponse> {
-  const attempt = await QuizAttemptModel.findById(attemptId).populate({
-    path: "questionsOrder",
-    model: "Question",
-  });
+  // Fetch quiz attempt with populated questions
+  const attempt = await QuizAttemptModel.findById(attemptId).populate([
+    {
+      path: "questions",
+      populate: {
+        path: "question",
+        select: "_id questionText questionType media points timeLimit options",
+      },
+    },
+  ]);
 
   if (!attempt) throw new Error("Attempt not found");
   if (attempt.user.toString() !== userId) throw new Error("Unauthorized");
   if (attempt.status === "completed") throw new Error("Quiz already completed");
 
-  const currentIndex = attempt.currentQuestionIndex;
-  if (currentIndex >= attempt.questionsOrder.length) {
-    throw new Error("No more questions in this quiz");
+  const total = attempt.questions.length;
+  let currentIndex = attempt.currentQuestionIndex;
+
+  if (currentIndex >= total) {
+    currentIndex = total - 1;
   }
 
-  const question = attempt.questionsOrder[currentIndex];
+  const { questionId, selectedOptions, textAnswer } = body;
 
-  const quiz = await QuizModel.findById(attempt.quiz);
-  let options = question.options;
-  if (quiz?.shuffleOptions) {
-    options = shuffleArray([...question.options]);
+  // Save or update user answer
+  if (questionId) {
+    const userQuestion = await UserQuestionModel.findOne({
+      attempt: attemptId,
+      _id: questionId,
+    }).populate([
+      {
+        path: "question",
+        select: "_id questionText questionType options",
+      },
+    ]);
+
+    if (!userQuestion) throw new Error("UserQuestion not found");
+
+    // Handle choice-based questions
+    if (
+      ["multiple_choice", "radio_choice", "true_false"].includes(
+        userQuestion.question.questionType
+      ) &&
+      userQuestion.question.options
+    ) {
+      userQuestion.selectedOptions = selectedOptions;
+    }
+
+    // Handle text-based questions
+    if (
+      ["fill_blank", "essay", "short_answer"].includes(
+        userQuestion.question.questionType
+      )
+    ) {
+      userQuestion.textAnswer = textAnswer || "";
+    }
+
+    userQuestion.answeredAt = new Date();
+
+    await userQuestion.save();
   }
+
+  // ✅ Only increment if not at the last question
+  if (currentIndex < total - 1) {
+    attempt.currentQuestionIndex = currentIndex + 1;
+    await attempt.save();
+    currentIndex = attempt.currentQuestionIndex;
+  }
+
+  const currentQuestion = attempt.questions[currentIndex];
 
   return {
-    id: question._id.toString(),
-    questionText: question.questionText,
-    questionType: question.questionType,
-    options,
-    media: question.media,
-    points: question.points,
-    timeLimit: question.timeLimit,
+    meta: {
+      total,
+      page: currentIndex + 1,
+      has_next: currentIndex + 1 < total,
+      has_prev: currentIndex > 0,
+    },
+    result: currentQuestion,
   };
 }
 
 export async function submitAnswers(
   attemptId: string,
-  data: SubmitAnswersRequest
+  userId: string
 ): Promise<QuizAttemptResponse> {
-  const attempt = await QuizAttemptModel.findById(attemptId).populate("quiz");
-  if (!attempt) throw new Error("Attempt not found");
-  if (attempt.status === "completed") throw new Error("Attempt already completed");
-
-  data.answers.forEach((answer) => {
-    const existingIndex = attempt.answers.findIndex(
-      (a) => a.questionId.toString() === answer.questionId
-    );
-    if (existingIndex >= 0) {
-      attempt.answers[existingIndex].selectedOptions = answer.selectedOptions;
-      attempt.answers[existingIndex].timeTaken = answer.timeTaken;
-    } else {
-      attempt.answers.push({
-        questionId: new mongoose.Types.ObjectId(answer.questionId),
-        selectedOptions: answer.selectedOptions,
-        timeTaken: answer.timeTaken,
-        isCorrect: false,
-      });
-    }
+  const attempt = await QuizAttemptModel.findOne({
+    _id: attemptId,
+    user: userId,
   });
 
-  // Calculate score and correctness
-  const quizQuestions = await QuizModel.findById(attempt.quiz._id)
-    .select("questions")
-    .populate("questions");
+  if (!attempt) {
+    throw new Error("Attempt not found");
+  }
+
+  const userQuestions = await UserQuestionModel.find({
+    attempt: attempt._id,
+  })
+    .populate([
+      {
+        path: "question",
+        select: "_id questionText questionType options points",
+      },
+    ])
+    .lean();
+
   let correctCount = 0;
-  let incorrectCount = 0;
+  let totalCount = userQuestions.length;
   let score = 0;
 
-  for (const ans of attempt.answers) {
-    const question = quizQuestions.questions.find(
-      (q) => q._id.toString() === ans.questionId.toString()
-    );
-    if (!question) continue;
+  for (const userQuestion of userQuestions) {
+    let correct = false;
 
-    const correctOptions = question.options
-      .filter((o) => o.isCorrect)
-      .map((o) => o.text);
-    const isCorrect = arraysEqual(ans.selectedOptions, correctOptions);
+    if (
+      ["true_false", "radio_choice", "multiple_choice", "fill_blank"].includes(
+        userQuestion.question.questionType
+      )
+    ) {
+      const correctAnswers = userQuestion.question.options
+        .filter((option: any) => option.correct)
+        .map((option: any) => option.text);
 
-    ans.isCorrect = isCorrect;
+      const selectedAnswers = userQuestion.selectedOptions || [];
 
-    if (isCorrect) {
-      correctCount++;
-      score += question.points || 1;
-    } else {
-      incorrectCount++;
+      // ✅ Exact match check (no missing or extra answers)
+      correct =
+        correctAnswers.length === selectedAnswers.length &&
+        correctAnswers.every((ans) => selectedAnswers.includes(ans));
     }
+
+    if (
+      ["essay", "short_answer"].includes(userQuestion.question.questionType)
+    ) {
+      correct = true; // ✅ for now, always mark true
+    }
+
+    if (correct) {
+      correctCount++;
+      score += userQuestion.question.points || 1; // default 1 if no points field
+    }
+
+    // 🔄 Save correctness to DB
+    await UserQuestionModel.updateOne(
+      { _id: userQuestion._id },
+      { $set: { correct: correct } }
+    );
   }
 
+  const incorrectCount = totalCount - correctCount;
+
+  // 🔄 Update attempt summary
+  attempt.score = score;
   attempt.correctAnswers = correctCount;
   attempt.incorrectAnswers = incorrectCount;
-  attempt.score = score;
-  attempt.percentage =
-    quizQuestions.questions.length > 0
-      ? (score / quizQuestions.questions.length) * 100
-      : 0;
-
-  // Increment currentQuestionIndex
-  attempt.currentQuestionIndex += 1;
-
-  // Mark completed if last question answered or isComplete flag sent
-  if (
-    data.isComplete ||
-    attempt.currentQuestionIndex >= attempt.questionsOrder.length
-  ) {
-    attempt.status = "completed";
-    attempt.completedAt = new Date();
-    attempt.timeTaken =
-      (attempt.completedAt.getTime() - attempt.startedAt.getTime()) / 1000;
-  }
+  attempt.percentage = totalCount > 0 ? (score / totalCount) * 100 : 0;
+  attempt.completedAt = new Date();
+  attempt.timeTaken =
+    (attempt.completedAt.getTime() - attempt.startedAt.getTime()) / 1000; // in seconds
+  attempt.status = "completed";
 
   await attempt.save();
 
-  return mapAttemptToResponse(attempt);
+  return {
+    message: "Success",
+    attemptId: attempt._id
+  };
 }
 
 // Fetch paginated quiz attempts for the authenticated user

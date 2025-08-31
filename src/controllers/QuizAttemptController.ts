@@ -11,6 +11,7 @@ import {
   Security,
   SuccessResponse,
   Response,
+  Query,
 } from "tsoa";
 
 import * as QuizAttemptService from "../services/quizAttemptService";
@@ -26,10 +27,6 @@ import { QuestionResponse } from "../types/schema/Question";
 @Route("quiz-attempts")
 @Tags("QuizAttempt")
 export class QuizAttemptController extends Controller {
-  private getCurrentUserId(): string {
-    return (this.request as any).user.id;
-  }
-
   @Security("jwt")
   @Post("start/{quizId}")
   @SuccessResponse<QuizAttemptResponse>(201, "Quiz attempt started")
@@ -38,7 +35,7 @@ export class QuizAttemptController extends Controller {
     @Request() req: any,
     @Path() quizId: string
   ): Promise<QuizAttemptResponse> {
-    const userId = req.user?._id; 
+    const userId = req.user?._id;
 
     if (!quizId || !userId) {
       this.setStatus(400);
@@ -54,9 +51,16 @@ export class QuizAttemptController extends Controller {
   @Response<ErrorMessageResponse>(400, "Invalid attempt id or answers")
   public async submitAnswers(
     @Path() attemptId: string,
-    @Body() answers: SubmitAnswersRequest
+    @Request() req: any,
   ): Promise<QuizAttemptResponse> {
-    return QuizAttemptService.submitAnswers(attemptId, answers);
+    const userId = req.user?._id;
+
+    if (!attemptId || !userId) {
+      this.setStatus(400);
+      return { message: "Invalid quiz id or user" } as any;
+    }
+
+    return QuizAttemptService.submitAnswers(attemptId, userId);
   }
 
   @Security("jwt")
@@ -64,14 +68,22 @@ export class QuizAttemptController extends Controller {
   @SuccessResponse<QuizAttemptResponse>(200, "Quiz attempt retrieved")
   @Response<ErrorMessageResponse>(400, "Invalid attempt id")
   public async getAttempt(
-    @Path() attemptId: string
+    @Request() req: any,
+    @Path() attemptId: string,
+    @Query() page?: number
   ): Promise<QuizAttemptResponse> {
-    const userId = this.getCurrentUserId();
-    return QuizAttemptService.getAttemptById(attemptId, userId);
+    const userId = req.user?._id;
+
+    if (!attemptId || !userId) {
+      this.setStatus(400);
+      return { message: "Invalid attempt id or user" } as any;
+    }
+
+    return QuizAttemptService.getAttemptById(attemptId, userId, page);
   }
 
   @Security("jwt")
-  @Get("{attemptId}/next-question")
+  @Post("{attemptId}/save-answer")
   @SuccessResponse<QuestionResponse>(
     200,
     "Next question retrieved successfully"
@@ -82,9 +94,18 @@ export class QuizAttemptController extends Controller {
     "Invalid attempt id or no more questions"
   )
   public async getNextQuestion(
-    @Path() attemptId: string
+    @Request() req: any,
+    @Path() attemptId: string,
+    @Body()
+    body: {
+      questionId: string;
+      selectedOptions?: string[]; // for multiple_choice, radio_choice, true_false
+      textAnswer?: string; // for essay, short_answer, fill_blank
+    },
+    @Query() page?: number
   ): Promise<QuestionResponse> {
-    const userId = this.getCurrentUserId();
-    return QuizAttemptService.getNextQuestion(attemptId, userId);
+    const userId = req.user?._id;
+    // Pass the questionId and user answer to your service
+    return QuizAttemptService.getNextQuestion(attemptId, userId, body);
   }
 }
