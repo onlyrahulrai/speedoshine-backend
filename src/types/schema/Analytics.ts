@@ -14,5 +14,5 @@ export interface LeaderboardResponse {
 export interface QuizStatsResponse {
   totalAttempts: number;
   averageScore: number;
-  successRate: number; // percentage
+  successRate?: number; // percentage
 }
