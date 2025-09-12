@@ -23,10 +23,16 @@ export interface Question {
     audio?: string;
   };
   points?: number;
-  timeLimit?: number;
   __v?: number;
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface Section {
+  id?: string;
+  title: string;
+  description?: string;
+  questions: Question[]
 }
 
 // Request body for creating/updating a quiz
@@ -45,10 +51,11 @@ export interface QuizRequest {
   shuffleQuestions?: boolean;
   shuffleOptions?: boolean;
   allowBackNavigation?: boolean;
-  nextQuiz?: string | null; // Quiz ID
+  type?: "standard" | "multi-section"; // standard or multi-section
   visibility?: "public" | "private" | "unlisted";
   scheduledAt?: string; // ISO date string
-  questions: Question[];
+  questions?: Question[];
+  sections?: Section[];
   isActive?: boolean;
   createdBy?: string; // user id
 }

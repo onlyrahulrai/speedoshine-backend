@@ -2,7 +2,12 @@ import mongoose from "mongoose";
 
 const AnswerSchema = new mongoose.Schema(
   {
-    questionId: { type: mongoose.Schema.Types.ObjectId, ref: "Question", required: true },
+    attempt: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "QuizAttempt",
+      required: true,
+    },
+    question: { type: mongoose.Schema.Types.ObjectId, ref: "Question", required: true },
     questionType: {
       type: String,
       enum: ["radio_choice", "multiple_choice", "true_false", "essay", "short_answer", "fill_blank", "matching_pairs"],

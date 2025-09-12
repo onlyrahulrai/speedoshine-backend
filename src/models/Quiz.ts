@@ -9,11 +9,13 @@ const QuizSchema = new mongoose.Schema(
     features: [String],
     focusAreas: [String],
     category: { type: String, index: true },
+
     difficulty: {
       type: String,
       enum: ["easy", "medium", "hard"],
       default: "medium",
     },
+
     tags: { type: [String], index: true },
 
     // Questions (references to Question documents)
@@ -24,6 +26,13 @@ const QuizSchema = new mongoose.Schema(
       },
     ],
 
+    sections: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Section",
+      },
+    ],
+
     // Settings
     totalMarks: { type: Number, default: 0 },
     timeLimit: { type: Number }, // in seconds
@@ -31,32 +40,23 @@ const QuizSchema = new mongoose.Schema(
     shuffleOptions: { type: Boolean, default: false },
     allowBackNavigation: { type: Boolean, default: true },
 
-    // Flow control
-    nextQuiz: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Quiz", // Points to the next quiz in the series
-      default: null,
-    },
-
     // Creator & access
     createdBy: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       index: true,
     },
+
     visibility: {
       type: String,
       enum: ["public", "private", "unlisted"],
       default: "public",
     },
+
     scheduledAt: { type: Date },
 
-    // Stats
-    attemptsCount: { type: Number, default: 0 },
-    averageScore: { type: Number, default: 0 },
-
     // Status
-    isActive: { type: Boolean, default: true },
+    active: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

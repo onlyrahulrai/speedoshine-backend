@@ -21,7 +21,6 @@ interface QuestionDoc extends Document {
     audio: string | null;
   };
   points: number;
-  timeLimit: number;
 }
 
 export const OptionSchema = new mongoose.Schema<Option>({
@@ -63,7 +62,6 @@ const QuestionSchema = new mongoose.Schema<QuestionDoc>(
       audio: { type: String, default: null },
     },
     points: { type: Number, default: 1 },
-    timeLimit: { type: Number, default: 30 }, // seconds
   },
   { timestamps: true }
 );
