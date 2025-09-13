@@ -1,6 +1,7 @@
 import QuizModel from "../models/Quiz"; // your mongoose Quiz model
 import QuizAttemptModel from "../models/QuizAttempt"; // mongoose QuizAttempt model
 import QuestionModel from "../models/Question"; // mongoose Question model
+import SectionModel from "../models/Section";
 
 interface PaginationParams {
   page?: number;
@@ -62,7 +63,34 @@ export async function getAllQuizzes({
 }
 
 export async function getQuizById(id: string) {
-  return await QuizModel.findById(id).populate("questions").lean();
+  try {
+    const quiz = await QuizModel.findById(id).select("-__v")
+      .populate([
+        {
+          path: "questions",
+          select: "-__v", // exclude version key
+        },
+        {
+          path: "sections",
+          select:"-__v",
+          populate: {
+            path: "questions",
+            select: "-__v",
+          },
+        },
+      ])
+      .lean();
+
+    if (!quiz) {
+      throw new Error("Quiz not found");
+    }
+
+    return quiz;
+  } catch (error: any) {
+    throw new Error(
+      error.message || "Failed to fetch quiz. Please try again."
+    );
+  }
 }
 
 export async function createQuiz(data: any) {
@@ -78,12 +106,13 @@ export async function createQuiz(data: any) {
       difficulty,
       tags,
       questions,
+      sections,
       totalMarks,
       timeLimit,
       shuffleQuestions,
       shuffleOptions,
       allowBackNavigation,
-      nextQuiz,
+      type,
       visibility,
       scheduledAt,
       isActive,
@@ -105,9 +134,12 @@ export async function createQuiz(data: any) {
       shuffleOptions: any;
       allowBackNavigation: any;
       visibility: any;
+      type: any;
       scheduledAt: any;
       isActive: any;
       createdBy: any;
+      questions?: any[];
+      sections?: any[];
     } = {
       title,
       subtitle,
@@ -118,6 +150,7 @@ export async function createQuiz(data: any) {
       difficulty,
       tags,
       totalMarks,
+      type,
       timeLimit,
       shuffleQuestions,
       shuffleOptions,
@@ -129,75 +162,145 @@ export async function createQuiz(data: any) {
       // Do NOT allow client to set _id, createdAt, updatedAt, attemptsCount, averageScore
     };
 
-    // Only add nextQuiz if it is valid (not null/undefined/empty)
-    if (nextQuiz !== undefined && nextQuiz !== null && nextQuiz !== "") {
-      (quizData as any).nextQuiz = nextQuiz;
+    if (type === "multi-section") {
+      const sectionIds: any[] = [];
+
+      // Use for...of instead of forEach
+      for (const section of sections || []) {
+        const { title, description, questions } = section;
+
+        // Create questions for this section
+        const createdQuestions = await QuestionModel.insertMany(questions);
+
+        // Save section
+        const sectionInstance = await new SectionModel({
+          title,
+          description,
+          questions: createdQuestions.map((q) => q._id),
+        }).save();
+
+        sectionIds.push(sectionInstance._id);
+      }
+
+      quizData.sections = sectionIds;
+    } else {
+      const createdQuestions = await QuestionModel.insertMany(questions);
+      quizData.questions = createdQuestions.map((q) => q._id);
     }
 
-    const createdQuestions = await QuestionModel.insertMany(questions);
-
     // Optionally, validate required fields here
-    const quiz = new QuizModel({
-      ...quizData,
-      questions: createdQuestions.map((q) => q._id),
-    });
+    const quiz = new QuizModel(quizData);
 
     await quiz.save();
+
     return quiz.toObject();
   } catch (error: any) {
     throw new Error(
       error.message ||
-        "Oops! Assessment creation failed. Please check the details and try again."
+      "Oops! Assessment creation failed. Please check the details and try again."
     );
   }
 }
 
 export async function updateQuiz(id: string, data: any) {
-  const { questions, ...body } = data;
+  const { questions, sections, ...body } = data;
 
-  // Find existing quiz to compare
+  // Find existing quiz
   const existingQuiz = await QuizModel.findById(id).lean();
   if (!existingQuiz) {
     throw new Error("Quiz not found");
   }
 
-  // Extract IDs of questions currently in quiz
-  const existingQuestionIds = existingQuiz.questions.map((q: any) =>
-    q.toString()
-  );
+  if (existingQuiz.type === "multi-section") {
+    const updatedSectionIds: any[] = [];
 
-  // Extract IDs coming from update request
-  const updatedQuestionIds = questions
-    .filter((q: any) => q._id) // keep only existing ones
-    .map((q: any) => q._id.toString());
+    for (const section of sections || []) {
+      if (section._id) {
+        // --- Update existing section ---
+        const existingSection = await SectionModel.findById(section._id).lean();
+        if (!existingSection) continue;
 
-  // Questions removed in update
-  const deletedQuestionIds = existingQuestionIds.filter(
-    (id: string) => !updatedQuestionIds.includes(id)
-  );
+        // Handle section questions
+        const existingQuestionIds = (existingSection.questions || []).map((q: any) => q.toString());
+        const updatedQuestionIds = (section.questions || [])
+          .filter((q: any) => q._id)
+          .map((q: any) => q._id.toString());
 
-  // Delete removed questions from DB
-  if (deletedQuestionIds.length > 0) {
-    await QuestionModel.deleteMany({ _id: { $in: deletedQuestionIds } });
+        // Find deleted questions
+        const deletedQuestionIds = existingQuestionIds.filter(
+          (id: string) => !updatedQuestionIds.includes(id)
+        );
+        if (deletedQuestionIds.length > 0) {
+          await QuestionModel.deleteMany({ _id: { $in: deletedQuestionIds } });
+        }
+
+        // Update or create questions
+        const updatedQuestions = await Promise.all(
+          (section.questions || []).map(async (q: any) => {
+            if (q._id) {
+              return QuestionModel.findByIdAndUpdate(q._id, q, { new: true });
+            } else {
+              return await QuestionModel.create(q);
+            }
+          })
+        );
+
+        // Update section
+        const updatedSection = await SectionModel.findByIdAndUpdate(
+          section._id,
+          {
+            title: section.title,
+            description: section.description,
+            questions: updatedQuestions.map((q) => q._id),
+          },
+          { new: true }
+        );
+
+        updatedSectionIds.push(updatedSection?._id);
+      } else {
+        // --- Create new section ---
+        const createdQuestions = await QuestionModel.insertMany(section.questions || []);
+        const newSection = await new SectionModel({
+          title: section.title,
+          description: section.description,
+          questions: createdQuestions.map((q) => q._id),
+        }).save();
+
+        updatedSectionIds.push(newSection._id);
+      }
+    }
+
+    body.sections = updatedSectionIds;
+  } else {
+    // --- Normal quiz handling ---
+    const existingQuestionIds = (existingQuiz.questions || []).map((q: any) => q.toString());
+    const updatedQuestionIds = (questions || [])
+      .filter((q: any) => q._id)
+      .map((q: any) => q._id.toString());
+
+    // Deleted questions
+    const deletedQuestionIds = existingQuestionIds.filter(
+      (id: string) => !updatedQuestionIds.includes(id)
+    );
+    if (deletedQuestionIds.length > 0) {
+      await QuestionModel.deleteMany({ _id: { $in: deletedQuestionIds } });
+    }
+
+    // Update or create
+    const updatedQuestions = await Promise.all(
+      (questions || []).map(async (q: any) => {
+        if (q._id) {
+          return QuestionModel.findByIdAndUpdate(q._id, q, { new: true });
+        } else {
+          return await QuestionModel.create(q);
+        }
+      })
+    );
+
+    body.questions = updatedQuestions.map((q) => q._id);
   }
 
-  // Update existing questions OR create new ones
-  const updatedQuestions = await Promise.all(
-    questions.map(async (q: any) => {
-      if (q._id) {
-        // update existing
-        return QuestionModel.findByIdAndUpdate(q._id, q, { new: true });
-      } else {
-        // create new
-        const newQ = await QuestionModel.create(q);
-        return newQ;
-      }
-    })
-  );
-
-  // Update quiz with new body + updated question ids
-  body.questions = updatedQuestions.map((q) => q._id);
-
+  // Update quiz main fields
   const quiz = await QuizModel.findByIdAndUpdate(id, body, { new: true });
 
   return quiz ? quiz.toObject() : null;

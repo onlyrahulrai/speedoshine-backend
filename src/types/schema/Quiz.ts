@@ -23,16 +23,15 @@ export interface Question {
     audio?: string;
   };
   points?: number;
-  __v?: number;
   createdAt?: string;
   updatedAt?: string;
 }
 
 export interface Section {
-  id?: string;
+  _id?: string;
   title: string;
   description?: string;
-  questions: Question[]
+  questions: Question[],
 }
 
 // Request body for creating/updating a quiz
@@ -63,11 +62,8 @@ export interface QuizRequest {
 // Response after creating or fetching a quiz
 export interface QuizResponse extends QuizRequest {
   _id?: string;
-  attemptsCount?: number;
-  averageScore?: number;
   createdAt?: string;
   updatedAt?: string;
-  __v?: number;
 }
 
 export interface QuizUpdateRequest extends Partial<QuizResponse> {}

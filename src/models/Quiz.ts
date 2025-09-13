@@ -56,7 +56,7 @@ const QuizSchema = new mongoose.Schema(
     scheduledAt: { type: Date },
 
     // Status
-    active: { type: Boolean, default: true },
+    isActive: { type: Boolean, default: true },
   },
   { timestamps: true }
 );

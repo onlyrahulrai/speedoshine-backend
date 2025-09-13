@@ -10,9 +10,7 @@ const SectionSchema = new mongoose.Schema(
         ref: "Question",
       },
     ],
-    timeLimit: { type: Number }, // optional section-wise timer
-    totalMarks: { type: Number, default: 0 },
   },
 );
 
-export default mongoose.model("SectionSchema", SectionSchema);
+export default mongoose.model("Section", SectionSchema);
