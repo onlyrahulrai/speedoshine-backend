@@ -31,10 +31,6 @@ import {
 @Route("analytics")
 @Tags("Analytics")
 export class AnalyticsController extends Controller {
-  private getCurrentUserId(): string {
-    return (this.request as any).user.id;
-  }
-
   @Security("jwt")
   @Get("{attemptId}/results")
   @SuccessResponse<QuizAttemptResponse>(200, "Quiz attempt results retrieved")
@@ -57,10 +53,12 @@ export class AnalyticsController extends Controller {
   @Get("user/me/history")
   @SuccessResponse<QuizAttemptListResponse>(200, "User quiz history retrieved")
   public async getUserQuizHistory(
+    @Request() req: any,
     @Query() page?: number,
-    @Query() limit?: number
+    @Query() limit?: number,
   ): Promise<QuizAttemptListResponse> {
-    const userId = this.getCurrentUserId();
+    const userId = req.user?._id;
+
     return QuizAttemptService.getUserAttempts(userId, page, limit);
   }
 
