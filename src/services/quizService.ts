@@ -102,6 +102,7 @@ export async function createQuiz(data: any) {
       tagline,
       description,
       features,
+      focusAreas,
       category,
       difficulty,
       tags,
@@ -125,6 +126,7 @@ export async function createQuiz(data: any) {
       tagline: any;
       description: any;
       features: any;
+      focusAreas:any;
       category: any;
       difficulty: any;
       tags: any;
@@ -146,6 +148,7 @@ export async function createQuiz(data: any) {
       tagline,
       description,
       features,
+      focusAreas,
       category,
       difficulty,
       tags,
