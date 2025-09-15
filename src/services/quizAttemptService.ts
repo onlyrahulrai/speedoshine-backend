@@ -1,9 +1,7 @@
 import QuizAttemptModel from "../models/QuizAttempt";
 import QuizModel from "../models/Quiz";
 import UserQuestionModel from "../models/UserQuestion";
-import mongoose from "mongoose";
 import {
-  SubmitAnswersRequest,
   QuizAttemptResponse,
 } from "../types/schema/QuizAttempt";
 import { QuestionResponse } from "../types/schema/Question";
@@ -11,7 +9,14 @@ import { QuizAttemptListResponse } from "../types/schema/QuizAttempt";
 import { shuffle } from "../helper/utils/common";
 
 export async function startAttempt(quizId: string, userId: string) {
-  const quiz = await QuizModel.findById(quizId).populate("questions");
+  const quiz = await QuizModel.findById(quizId)
+    .populate([
+      { path: "questions" },
+      {
+        path: "sections",
+        populate: { path: "questions" },
+      },
+    ]);
 
   if (!quiz || !quiz.isActive) {
     throw new Error("Quiz not found or inactive");
@@ -30,6 +35,13 @@ export async function startAttempt(quizId: string, userId: string) {
         select: "_id questionText questionType media points timeLimit",
       },
     },
+    {
+      path: "sections",
+      populate: {
+        path: "questions",
+        select: "_id questionText questionType media points timeLimit",
+      },
+    },
   ]);
 
   if (!attempt) {
@@ -38,47 +50,109 @@ export async function startAttempt(quizId: string, userId: string) {
       quiz: quizId,
       user: userId,
       currentQuestionIndex: 0,
+      currentSectionIndex: 0,
       score: 0,
       percentage: 0,
       correctAnswers: 0,
       incorrectAnswers: 0,
       startedAt: new Date(),
       status: "in_progress",
+      sections: [],
+      questions: []
     }).save();
 
-    let questions = [...quiz.questions];
+    let userQuestions: any[] = [];
 
-    // Shuffle questions if enabled
-    if (quiz.shuffleQuestions) questions = shuffle(questions);
+    // ---------- Standard Quiz ----------
+    if (quiz.type === "standard") {
+      let questions = [...quiz.questions];
 
-    // Prepare userQuestions
-    const userQuestions = await Promise.all(
-      questions.map(async (question: any) => {
-        let options = [...question.options];
+      // Shuffle questions if enabled
+      if (quiz.shuffleQuestions) questions = shuffle(questions);
 
-        if (quiz.shuffleOptions) {
-          options = shuffle(options, "options");
-        }
+      // Prepare userQuestions
+      const userQuestions = await Promise.all(
+        questions.map(async (question: any) => {
+          let options = [...question.options];
 
-        const userQuestion = new UserQuestionModel({
-          attempt: attempt._id,
-          question: question._id,
-          options,
+          if (quiz.shuffleOptions) {
+            options = shuffle(options, "options");
+          }
+
+          const userQuestion = new UserQuestionModel({
+            attempt: attempt._id,
+            question: question._id,
+            questionType: question.questionType,
+            options,
+          });
+
+          return userQuestion.save();
+        })
+      );
+
+      attempt.questions = userQuestions.map((uq) => uq._id);
+      attempt.totalMarks = quiz.totalMarks || questions.reduce((acc, q) => acc + q.points, 0);
+    } else {
+      // ---------- MULTI-SECTION QUIZ ----------
+      const sectionAttempts = [];
+
+      for (const section of quiz.sections) {
+        let secQuestions = [...section.questions];
+
+        if (quiz.shuffleQuestions) secQuestions = shuffle(secQuestions);
+
+        const secUserQuestions = await Promise.all(
+          secQuestions.map(async (question: any) => {
+            let options = [...question.options];
+
+            if (quiz.shuffleOptions) options = shuffle(options, "options");
+
+            const userQuestion = new UserQuestionModel({
+              attempt: attempt._id,
+              section: section._id,
+              question: question._id,
+              questionType: question.questionType,
+              options,
+            });
+
+            return userQuestion.save();
+          })
+        );
+
+        // snapshot of section attempt
+        sectionAttempts.push({
+          section: section._id,
+          questions: secUserQuestions.map((uq) => uq._id),
+          totalMarks: secQuestions.reduce((acc, q) => acc + q.points, 0), // ✅ freeze here
+          score: 0,
+          percentage: 0,
+          correctAnswers: 0,
+          incorrectAnswers: 0,
+          timeTaken: 0,
+          startedAt: new Date(),
+          status: "in_progress",
         });
+      }
 
-        return userQuestion.save();
-      })
-    );
+      attempt.questions = [];
+      attempt.sections = sectionAttempts;
+    }
 
-    attempt.questions = userQuestions.map((uq) => uq._id);
 
     attempt = await attempt.save();
 
-    attempt = await attempt.populate([
+     attempt = await attempt.populate([
       {
         path: "questions",
         populate: {
           path: "question",
+          select: "_id questionText questionType media points timeLimit",
+        },
+      },
+      {
+        path: "sections",
+        populate: {
+          path: "questions",
           select: "_id questionText questionType media points timeLimit",
         },
       },

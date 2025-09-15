@@ -33,6 +33,12 @@ const QuizSchema = new mongoose.Schema(
       },
     ],
 
+    type:{
+      type: String,
+      enum: ["standard", "multi-section"],
+      default: "standard",
+    },
+
     // Settings
     totalMarks: { type: Number, default: 0 },
     timeLimit: { type: Number }, // in seconds

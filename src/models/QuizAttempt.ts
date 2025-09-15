@@ -8,12 +8,16 @@ const QuizAttemptSchema = new mongoose.Schema(
     questions: [{
       type: mongoose.Schema.Types.ObjectId,
       ref: "UserQuestion",
-    }], // use the UserQuestionSchema for questions
+    }], 
 
     // NEW: Track sections explicitly
     sections: [
       {
         section: { type: mongoose.Schema.Types.ObjectId, ref: "Section" },
+        questions: [{
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "UserQuestion",
+        }], 
         score: { type: Number, default: 0 },
         percentage: { type: Number, default: 0 },
         correctAnswers: { type: Number, default: 0 },
