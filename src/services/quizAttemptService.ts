@@ -230,30 +230,16 @@ export async function getAttemptById(
   userId: string,
   page?: number
 ) {
-  const attempt = await QuizAttemptModel.findById(attemptId)
+  const attempt = await QuizAttemptModel.findById(attemptId).select("quiz sections.section user")
     .populate([
       {
         path: "quiz",
         select: "_id title description timeLimit type",
       },
       {
-        path: "questions",
-        populate: {
-          path: "question",
-          select: "_id questionText questionType media points timeLimit",
-        },
-      },
-      {
-        path: "sections.section", // populate section metadata
-        select: "_id title description",
-      },
-      {
-        path: "sections.questions",
-        populate: {
-          path: "question",
-          select: "_id questionText questionType media points timeLimit",
-        },
-      },
+        path:"sections.section",
+        select:"_id title description"
+      }
     ])
     .lean();
 
@@ -264,82 +250,84 @@ export async function getAttemptById(
   let result: any;
   let meta: any;
 
-  if (attempt.quiz.type === "multi-section") {
-    // === Section + Question handling ===
-    const totalSections = attempt.sections.length;
-    let currentSectionIndex = attempt.currentSectionIndex || 0;
-    currentSectionIndex = Math.max(0, Math.min(currentSectionIndex, totalSections - 1));
+  // if (attempt.quiz.type === "multi-section") {
+  //   // === Section + Question handling ===
+  //   const totalSections = attempt.sections.length;
+  //   let currentSectionIndex = attempt.currentSectionIndex || 0;
+  //   currentSectionIndex = Math.max(0, Math.min(currentSectionIndex, totalSections - 1));
 
-    const currentSection = attempt.sections[currentSectionIndex];
-    const totalQuestions = currentSection.questions.length;
+  //   const currentSection = attempt.sections[currentSectionIndex];
+  //   const totalQuestions = currentSection.questions.length;
 
-    let currentQuestionIndex = page
-      ? page - 1
-      : attempt.currentQuestionIndex || 0;
-    currentQuestionIndex = Math.max(0, Math.min(currentQuestionIndex, totalQuestions - 1));
+  //   let currentQuestionIndex = page
+  //     ? page - 1
+  //     : attempt.currentQuestionIndex || 0;
+  //   currentQuestionIndex = Math.max(0, Math.min(currentQuestionIndex, totalQuestions - 1));
 
-    const currentSectionPage = currentSectionIndex + 1;
-    const currentQuestionPage = currentQuestionIndex + 1;
+  //   const currentSectionPage = currentSectionIndex + 1;
+  //   const currentQuestionPage = currentQuestionIndex + 1;
 
-    // update progress
-    await QuizAttemptModel.updateOne(
-      { _id: attemptId },
-      {
-        $set: {
-          currentSectionIndex,
-          currentQuestionIndex,
-        },
-      }
-    );
+  //   // update progress
+  //   await QuizAttemptModel.updateOne(
+  //     { _id: attemptId },
+  //     {
+  //       $set: {
+  //         currentSectionIndex,
+  //         currentQuestionIndex,
+  //       },
+  //     }
+  //   );
 
-    result = currentSection.questions[currentQuestionIndex];
+  //   result = currentSection.questions[currentQuestionIndex];
 
-    meta = {
-      section: {
-        _id: currentSection.section?._id,
-        title: currentSection.section?.title,
-        total: totalSections,
-        page: currentSectionPage,
-        has_next: currentSectionPage < totalSections,
-        has_prev: currentSectionPage > 1,
-      },
-      question: {
-        total: totalQuestions,
-        page: currentQuestionPage,
-        has_next: currentQuestionPage < totalQuestions,
-        has_prev: currentQuestionPage > 1,
-      },
-    };
-  } else {
-    // === Standard Question-by-Question handling ===
-    const total = attempt.questions.length;
-    let currentQuestionIndex = page
-      ? page - 1
-      : attempt.currentQuestionIndex || 0;
-    currentQuestionIndex = Math.max(0, Math.min(currentQuestionIndex, total - 1));
+  //   meta = {
+  //     section: {
+  //       _id: currentSection.section?._id,
+  //       title: currentSection.section?.title,
+  //       total: totalSections,
+  //       page: currentSectionPage,
+  //       has_next: currentSectionPage < totalSections,
+  //       has_prev: currentSectionPage > 1,
+  //     },
+  //     question: {
+  //       total: totalQuestions,
+  //       page: currentQuestionPage,
+  //       has_next: currentQuestionPage < totalQuestions,
+  //       has_prev: currentQuestionPage > 1,
+  //     },
+  //   };
+  // } else {
+  //   // === Standard Question-by-Question handling ===
+  //   const total = attempt.questions.length;
+  //   let currentQuestionIndex = page
+  //     ? page - 1
+  //     : attempt.currentQuestionIndex || 0;
+  //   currentQuestionIndex = Math.max(0, Math.min(currentQuestionIndex, total - 1));
 
-    const currentPage = currentQuestionIndex + 1;
+  //   const currentPage = currentQuestionIndex + 1;
 
-    await QuizAttemptModel.updateOne(
-      { _id: attemptId },
-      { $set: { currentQuestionIndex } }
-    );
+  //   await QuizAttemptModel.updateOne(
+  //     { _id: attemptId },
+  //     { $set: { currentQuestionIndex } }
+  //   );
 
-    result = attempt.questions[currentQuestionIndex];
+  //   result = attempt.questions[currentQuestionIndex];
 
-    meta = {
-      total,
-      page: currentPage,
-      has_next: currentPage < total,
-      has_prev: currentPage > 1,
-    };
-  }
+  //   meta = {
+  //     total,
+  //     page: currentPage,
+  //     has_next: currentPage < total,
+  //     has_prev: currentPage > 1,
+  //   };
+  // }
 
-  return {
-    meta,
-    quiz: attempt.quiz,
-    result,
-  };
+  // return {
+  //   meta,
+  //   quiz: attempt.quiz,
+  //   result,
+  // };
+
+  return attempt;
 }
 
 
