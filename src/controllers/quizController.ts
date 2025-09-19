@@ -62,13 +62,12 @@ export class QuizController extends Controller {
     });
   }
 
-  @Security("jwt")
   @Get("{id}")
   @SuccessResponse<QuizResponse>(200, "Quiz retrieved successfully")
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   @Response<ErrorMessageResponse>(400, "Invalid quiz id supplied")
-  public async getQuiz(@Path() id: string): Promise<QuizResponse | null> {
-    return QuizService.getQuizById(id);
+  public async getQuiz(@Path() id: string,  @Query() flag?: string,): Promise<QuizResponse | null> {
+    return QuizService.getQuizById(id, flag);
   }
 
   @Security("jwt")

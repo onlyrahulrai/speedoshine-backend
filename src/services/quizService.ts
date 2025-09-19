@@ -62,23 +62,38 @@ export async function getAllQuizzes({
   };
 }
 
-export async function getQuizById(id: string) {
+export async function getQuizById(id: string, flag?: "edit" | "attempts") {
   try {
-    const quiz = await QuizModel.findById(id).select("-__v")
-      .populate([
+    const populateOptions = [];
+
+    if (flag === "edit"){
+      populateOptions.push(
         {
           path: "questions",
-          select: "-__v", // exclude version key
+          select: "-__v +options.correct",
         },
         {
           path: "sections",
-          select:"-__v",
+          select: "-__v",
           populate: {
             path: "questions",
-            select: "-__v",
+            select: "-__v +options.correct",
           },
         },
-      ])
+      );
+    }
+
+    if (flag === "attempts"){
+      populateOptions.push(
+        {
+          path: "sections",
+          select: "-__v -questions",
+        }
+      )
+    }
+
+    let quiz = await QuizModel.findById(id).select("-__v")
+      .populate(populateOptions)
       .lean();
 
     if (!quiz) {
@@ -126,7 +141,7 @@ export async function createQuiz(data: any) {
       tagline: any;
       description: any;
       features: any;
-      focusAreas:any;
+      focusAreas: any;
       category: any;
       difficulty: any;
       tags: any;

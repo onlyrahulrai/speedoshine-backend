@@ -25,7 +25,7 @@ interface QuestionDoc extends Document {
 
 export const OptionSchema = new mongoose.Schema<Option>({
   text: { type: String, required: false },
-  correct: { type: Boolean, default: false },
+  correct: { type: Boolean, default: false, select: false }, // do not return correct answer by default
 });
 
 const QuestionSchema = new mongoose.Schema<QuestionDoc>(
