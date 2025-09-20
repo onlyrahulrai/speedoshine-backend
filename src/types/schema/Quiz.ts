@@ -31,6 +31,7 @@ export interface Section {
   _id?: string;
   title: string;
   description?: string;
+  totalMarks?: number;
   questions: Question[],
 }
 

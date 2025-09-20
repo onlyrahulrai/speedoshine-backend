@@ -87,7 +87,7 @@ export async function getQuizById(id: string, flag?: "edit" | "attempts") {
       populateOptions.push(
         {
           path: "sections",
-          select: "-__v -questions",
+          select: "title description questions",
         }
       )
     }
