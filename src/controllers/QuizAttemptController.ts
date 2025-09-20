@@ -70,7 +70,8 @@ export class QuizAttemptController extends Controller {
   public async getAttempt(
     @Request() req: any,
     @Path() attemptId: string,
-    @Query() page?: number
+    @Query() page?: number,
+    @Query() limit?: number,
   ): Promise<QuizAttemptResponse> {
     const userId = req.user?._id;
 
@@ -79,7 +80,7 @@ export class QuizAttemptController extends Controller {
       return { message: "Invalid attempt id or user" } as any;
     }
 
-    return QuizAttemptService.getAttemptById(attemptId, userId, page);
+    return QuizAttemptService.getAttemptQuestions(attemptId, userId, page, limit);
   }
 
   @Security("jwt")
@@ -93,7 +94,7 @@ export class QuizAttemptController extends Controller {
     400,
     "Invalid attempt id or no more questions"
   )
-  public async getNextQuestion(
+  public async saveAnswer(
     @Request() req: any,
     @Path() attemptId: string,
     @Body()
@@ -102,10 +103,17 @@ export class QuizAttemptController extends Controller {
       selectedOptions?: string[]; // for multiple_choice, radio_choice, true_false
       textAnswer?: string; // for essay, short_answer, fill_blank
     },
-    @Query() page?: number
   ): Promise<QuestionResponse> {
     const userId = req.user?._id;
-    // Pass the questionId and user answer to your service
-    return QuizAttemptService.getNextQuestion(attemptId, userId, body);
+
+    if (!userId) throw new Error("Authentication required");
+
+    return await QuizAttemptService.saveAnswer({
+      attemptId,
+      questionId: body.questionId,
+      userId,
+      selectedOptions: body.selectedOptions,
+      textAnswer: body.textAnswer,
+    });;
   }
 }

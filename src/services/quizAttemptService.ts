@@ -8,13 +8,28 @@ import { QuestionResponse } from "../types/schema/Question";
 import { QuizAttemptListResponse } from "../types/schema/QuizAttempt";
 import { shuffle } from "../helper/utils/common";
 
+interface SaveAnswerParams {
+  attemptId: string;
+  questionId: string;
+  userId: string;
+  selectedOptions?: string[];
+  textAnswer?: string;
+}
+
 export async function startAttempt(quizId: string, userId: string) {
   const quiz = await QuizModel.findById(quizId)
     .populate([
-      { path: "questions" },
+      {
+        path: "questions",
+        select: "-__v +options.correct",
+      },
       {
         path: "sections",
-        populate: { path: "questions" },
+        select: "-__v",
+        populate: {
+          path: "questions",
+          select: "-__v +options.correct",
+        },
       },
     ]);
 
@@ -61,8 +76,6 @@ export async function startAttempt(quizId: string, userId: string) {
       questions: []
     }).save();
 
-    let userQuestions: any[] = [];
-
     // ---------- Standard Quiz ----------
     if (quiz.type === "standard") {
       let questions = [...quiz.questions];
@@ -98,6 +111,8 @@ export async function startAttempt(quizId: string, userId: string) {
 
       for (const section of quiz.sections) {
         let secQuestions = [...section.questions];
+
+        console.log("Section Questions:", JSON.stringify(secQuestions));
 
         if (quiz.shuffleQuestions) secQuestions = shuffle(secQuestions);
 
@@ -161,261 +176,197 @@ export async function startAttempt(quizId: string, userId: string) {
   return attempt;
 }
 
-// export async function getAttemptById(
-//   attemptId: string,
-//   userId: string,
-//   page?: number
-// ) {
-//   const attempt = await QuizAttemptModel.findById(attemptId)
-//     .populate([
-//       {
-//         path: "quiz",
-//         select: "_id title description timeLimit",
-//       },
-//       {
-//         path: "questions",
-//         populate: {
-//           path: "question",
-//           select: "_id questionText questionType media points timeLimit",
-//         },
-//       },
-//       {
-//         path: "sections",
-//         populate: {
-//           path: "questions",
-//           select: "_id questionText questionType media points timeLimit",
-//         },
-//       },
-//     ])
-//     .lean();
-
-//   if (!attempt) throw new Error("Attempt not found");
-
-//   if (attempt.user.toString() !== userId) throw new Error("Unauthorized");
-
-//   if (attempt.status === "completed") throw new Error("Quiz already completed");
-
-//   const total = attempt.questions.length;
-
-//   // === Pagination response shape ===
-//   let currentQuestionIndex = page
-//     ? page - 1
-//     : attempt.currentQuestionIndex || 0;
-//   currentQuestionIndex = Math.max(0, Math.min(currentQuestionIndex, total - 1));
-
-//   const currentPage = currentQuestionIndex + 1;
-
-//   // Update progress in DB
-//   await QuizAttemptModel.updateOne(
-//     { _id: attemptId },
-//     { $set: { currentQuestionIndex: currentQuestionIndex } }
-//   );
-
-//   const result = attempt.questions[currentQuestionIndex];
-
-//   return {
-//     meta: {
-//       total,
-//       page: currentPage,
-//       has_next: currentPage < total,
-//       has_prev: currentPage > 1,
-//     },
-//     quiz: attempt.quiz,
-//     result,
-//   };
-// }
-
-export async function getAttemptById(
+export async function getAttemptQuestions(
   attemptId: string,
   userId: string,
-  page?: number
-) {
-  const attempt = await QuizAttemptModel.findById(attemptId).select("quiz sections.section user")
+  page?: number,
+  limit: number = 1
+): Promise<QuestionResponse> {
+  const attempt = await QuizAttemptModel.findById(attemptId)
     .populate([
       {
         path: "quiz",
-        select: "_id title description timeLimit type",
+        select: "_id title description type",
       },
       {
-        path:"sections.section",
-        select:"_id title description"
-      }
+        path: "questions",
+        select:
+          "_id attempt question options.text options._id selectedOptions textAnswer answeredAt",
+        populate: { path: "question", select: "_id questionText questionType media points timeLimit" },
+      },
+      {
+        path: "sections",
+        populate: {
+          path: "questions",
+          select:
+            "_id attempt question options.text options._id selectedOptions textAnswer answeredAt",
+          populate: { path: "question", select: "_id questionText questionType media points timeLimit" },
+        },
+      },
     ])
     .lean();
 
   if (!attempt) throw new Error("Attempt not found");
-  if (attempt.user.toString() !== userId) throw new Error("Unauthorized");
+
+  const userIdStr =
+    typeof attempt.user === "object" && "_id" in attempt.user
+      ? attempt.user._id.toString()
+      : attempt.user.toString();
+
+  if (userIdStr !== userId) throw new Error("Unauthorized");
+
   if (attempt.status === "completed") throw new Error("Quiz already completed");
 
-  let result: any;
-  let meta: any;
+  let sectionIndex = attempt.currentSectionIndex ?? 0;
+  let questionIndex = attempt.currentQuestionIndex ?? 0;
 
-  // if (attempt.quiz.type === "multi-section") {
-  //   // === Section + Question handling ===
-  //   const totalSections = attempt.sections.length;
-  //   let currentSectionIndex = attempt.currentSectionIndex || 0;
-  //   currentSectionIndex = Math.max(0, Math.min(currentSectionIndex, totalSections - 1));
+  let currentSection = attempt.quiz?.type === "multi-section" ? attempt.sections?.[sectionIndex] : null;
 
-  //   const currentSection = attempt.sections[currentSectionIndex];
-  //   const totalQuestions = currentSection.questions.length;
+  let questionsList: any[] = currentSection ? currentSection.questions : attempt.questions;
 
-  //   let currentQuestionIndex = page
-  //     ? page - 1
-  //     : attempt.currentQuestionIndex || 0;
-  //   currentQuestionIndex = Math.max(0, Math.min(currentQuestionIndex, totalQuestions - 1));
+  const totalQuestions = questionsList.length;
 
-  //   const currentSectionPage = currentSectionIndex + 1;
-  //   const currentQuestionPage = currentQuestionIndex + 1;
+  let effectivePage =
+    attempt.currentQuestionIndex > 0 && (!page || Number.isNaN(page))
+      ? attempt.currentQuestionIndex + 1// resume from progress
+      : Math.max(1, Math.floor(page || 1)); // otherwise use provided page (sanitized)
 
-  //   // update progress
-  //   await QuizAttemptModel.updateOne(
-  //     { _id: attemptId },
-  //     {
-  //       $set: {
-  //         currentSectionIndex,
-  //         currentQuestionIndex,
-  //       },
-  //     }
-  //   );
+  // Pagination logic
+  const start = (effectivePage - 1);
+  const skip = start * limit;
+  const end = skip + limit;
 
-  //   result = currentSection.questions[currentQuestionIndex];
+  let paginatedQuestions = questionsList.slice(skip, end);
 
-  //   meta = {
-  //     section: {
-  //       _id: currentSection.section?._id,
-  //       title: currentSection.section?.title,
-  //       total: totalSections,
-  //       page: currentSectionPage,
-  //       has_next: currentSectionPage < totalSections,
-  //       has_prev: currentSectionPage > 1,
-  //     },
-  //     question: {
-  //       total: totalQuestions,
-  //       page: currentQuestionPage,
-  //       has_next: currentQuestionPage < totalQuestions,
-  //       has_prev: currentQuestionPage > 1,
-  //     },
-  //   };
-  // } else {
-  //   // === Standard Question-by-Question handling ===
-  //   const total = attempt.questions.length;
-  //   let currentQuestionIndex = page
-  //     ? page - 1
-  //     : attempt.currentQuestionIndex || 0;
-  //   currentQuestionIndex = Math.max(0, Math.min(currentQuestionIndex, total - 1));
+  const requestedPageProvided = typeof page === "number" && !Number.isNaN(page);
 
-  //   const currentPage = currentQuestionIndex + 1;
+  const isSectionCompleted = currentSection && skip >= totalQuestions && requestedPageProvided;
 
-  //   await QuizAttemptModel.updateOne(
-  //     { _id: attemptId },
-  //     { $set: { currentQuestionIndex } }
-  //   );
-
-  //   result = attempt.questions[currentQuestionIndex];
-
-  //   meta = {
-  //     total,
-  //     page: currentPage,
-  //     has_next: currentPage < total,
-  //     has_prev: currentPage > 1,
-  //   };
-  // }
-
-  // return {
-  //   meta,
-  //   quiz: attempt.quiz,
-  //   result,
-  // };
-
-  return attempt;
-}
-
-
-export async function getNextQuestion(
-  attemptId: string,
-  userId: string,
-  body: any
-): Promise<QuestionResponse> {
-  // Fetch quiz attempt with populated questions
-  const attempt = await QuizAttemptModel.findById(attemptId).populate([
-    {
-      path: "questions",
-      populate: {
-        path: "question",
-        select: "_id questionText questionType media points timeLimit options",
-      },
-    },
-  ]);
-
-  if (!attempt) throw new Error("Attempt not found");
-  if (attempt.user.toString() !== userId) throw new Error("Unauthorized");
-  if (attempt.status === "completed") throw new Error("Quiz already completed");
-
-  const total = attempt.questions.length;
-  let currentIndex = attempt.currentQuestionIndex;
-
-  if (currentIndex >= total) {
-    currentIndex = total - 1;
-  }
-
-  const { questionId, selectedOptions, textAnswer } = body;
-
-  // Save or update user answer
-  if (questionId) {
-    const userQuestion = await UserQuestionModel.findOne({
-      attempt: attemptId,
-      _id: questionId,
-    }).populate([
+  // Section ended: move to next section
+  if (currentSection && isSectionCompleted) {
+    // Update current section as completed
+    await QuizAttemptModel.updateOne(
+      { _id: attemptId, "sections._id": currentSection._id },
       {
-        path: "question",
-        select: "_id questionText questionType options",
-      },
-    ]);
+        $set: {
+          "sections.$.status": "completed",
+          "sections.$.completedAt": new Date(),
+        },
+      }
+    );
 
-    if (!userQuestion) throw new Error("UserQuestion not found");
+    sectionIndex++;
+    questionIndex = 0;
 
-    // Handle choice-based questions
-    if (
-      ["multiple_choice", "radio_choice", "true_false"].includes(
-        userQuestion.question.questionType
-      ) &&
-      userQuestion.question.options
-    ) {
-      userQuestion.selectedOptions = selectedOptions;
+    if (sectionIndex < (attempt.sections?.length || 0)) {
+      currentSection = attempt.sections[sectionIndex];
+      questionsList = currentSection.questions;
+      paginatedQuestions = questionsList.slice(0, limit);
+
+      // Reset progress for new section
+      await QuizAttemptModel.updateOne(
+        { _id: attemptId },
+        { currentSectionIndex: sectionIndex, currentQuestionIndex: 0 }
+      );
+
+      effectivePage = 1;
     }
-
-    // Handle text-based questions
-    if (
-      ["fill_blank", "essay", "short_answer"].includes(
-        userQuestion.question.questionType
-      )
-    ) {
-      userQuestion.textAnswer = textAnswer || "";
-    }
-
-    userQuestion.answeredAt = new Date();
-
-    await userQuestion.save();
+  } else {
+    // Update progress within current section
+    await QuizAttemptModel.updateOne(
+      { _id: attemptId },
+      { currentSectionIndex: sectionIndex, currentQuestionIndex: start }
+    );
   }
-
-  // ✅ Only increment if not at the last question
-  if (currentIndex < total - 1) {
-    attempt.currentQuestionIndex = currentIndex + 1;
-    await attempt.save();
-    currentIndex = attempt.currentQuestionIndex;
-  }
-
-  const currentQuestion = attempt.questions[currentIndex];
 
   return {
     meta: {
-      total,
-      page: currentIndex + 1,
-      has_next: currentIndex + 1 < total,
-      has_prev: currentIndex > 0,
+      total: questionsList.length,
+      page: effectivePage,
+      limit,
+      has_next:
+        end < questionsList.length ||
+        (currentSection && sectionIndex + 1 < (attempt.sections?.length || 0)),
+      has_prev: effectivePage > 1 || questionIndex > 0,
     },
-    result: currentQuestion,
+    ...(currentSection ? { section: currentSection.section } : {}),
+    questions: paginatedQuestions,
   };
+}
+
+export async function saveAnswer({
+  attemptId,
+  questionId,
+  userId,
+  selectedOptions,
+  textAnswer,
+}: SaveAnswerParams) {
+  const attempt = await QuizAttemptModel.findById(attemptId);
+  if (!attempt) throw new Error("Attempt not found");
+
+  // ✅ Check user authorization
+  const attemptUserId = attempt.user.toString();
+  if (attemptUserId !== userId) throw new Error("Unauthorized");
+
+  // ✅ Fetch user question
+  const userQuestion = await UserQuestionModel.findOne({
+    attempt: attemptId,
+    _id: questionId,
+  }).populate("question", "_id questionText questionType options");
+
+  if (!userQuestion) throw new Error("UserQuestion not found");
+
+  const { question } = userQuestion;
+
+  console.log("Question fetched:", question);
+
+  // ✅ Handle answers
+  if (["multiple_choice", "radio_choice", "true_false"].includes(question.questionType)) {
+    if (selectedOptions || textAnswer) {
+      const correctAnswers = question.options.filter(o => o.correct).map(o => o.text);
+
+      userQuestion.selectedOptions = selectedOptions;
+
+      userQuestion.correct =
+        selectedOptions.length === correctAnswers.length &&
+        correctAnswers.every(ans => selectedOptions.includes(ans));
+    }
+  } else if (["essay", "short_answer", "fill_blank"].includes(question.questionType)) {
+    if (textAnswer !== undefined) {
+      userQuestion.textAnswer = textAnswer;
+
+      if (question.questionType === "fill_blank") {
+        const correctAnswers = question.options.filter(o => o.correct).map(o => o.text);
+        userQuestion.correct =
+          correctAnswers.length === 1 &&
+          correctAnswers[0].toLowerCase().trim() === textAnswer.toLowerCase().trim();
+      } else {
+        userQuestion.correct = true; // mark for later evaluation
+      }
+    }
+  }
+
+  userQuestion.answeredAt = new Date();
+  await userQuestion.save();
+
+  // ✅ Update section progress (if multi-section quiz)
+  if (attempt.quiz?.type === "multi-section" && attempt.sections?.length) {
+    const section = attempt.sections.find(sec => sec.questions.includes(userQuestion._id));
+    if (section) {
+      const answeredCount = await UserQuestionModel.countDocuments({
+        _id: { $in: section.questions },
+        $or: [{ textAnswer: { $ne: null } }, { selectedOptions: { $ne: [] } }],
+      });
+
+      if (answeredCount === section.questions.length) {
+        section.status = "completed";
+        section.completedAt = new Date();
+        await attempt.save();
+      }
+    }
+  }
+
+  return { message: "Answer saved successfully", questionId: userQuestion._id };
 }
 
 export async function submitAnswers(
@@ -425,82 +376,109 @@ export async function submitAnswers(
   const attempt = await QuizAttemptModel.findOne({
     _id: attemptId,
     user: userId,
-  });
-
-  if (!attempt) {
-    throw new Error("Attempt not found");
-  }
-
-  const userQuestions = await UserQuestionModel.find({
-    attempt: attempt._id,
-  })
-    .populate([
-      {
+  }).populate([
+    {
+      path: "sections",
+      populate: {
+        path: "questions",
+        populate: {
+          path: "question",
+          select: "_id questionText questionType options points",
+        },
+      },
+    },
+    {
+      path: "questions",
+      populate: {
         path: "question",
         select: "_id questionText questionType options points",
       },
-    ])
-    .lean();
+    },
+  ]);
 
-  let correctCount = 0;
-  let totalCount = userQuestions.length;
-  let score = 0;
+  if (!attempt) throw new Error("Attempt not found");
 
-  for (const userQuestion of userQuestions) {
-    let correct = false;
+  // Normalize all questions
+  const userQuestions: any[] = attempt.sections?.length
+    ? attempt.sections.flatMap((sec: any) => sec.questions)
+    : attempt.questions;
 
-    if (
-      ["true_false", "radio_choice", "multiple_choice", "fill_blank"].includes(
-        userQuestion.question.questionType
-      )
-    ) {
-      const correctAnswers = userQuestion.question.options
-        .filter((option: any) => option.correct)
-        .map((option: any) => option.text);
+  const totalQuestions = userQuestions.length;
 
-      const selectedAnswers = userQuestion.selectedOptions || [];
+  // Aggregate stats in one pass
+  let totalCorrect = 0;
+  let totalScore = 0;
 
-      // ✅ Exact match check (no missing or extra answers)
-      correct =
-        correctAnswers.length === selectedAnswers.length &&
-        correctAnswers.every((ans) => selectedAnswers.includes(ans));
+  for (const uq of userQuestions) {
+    if (uq.correct) {
+      totalCorrect++;
+      totalScore += uq.question.points || 1;
     }
-
-    if (
-      ["essay", "short_answer"].includes(userQuestion.question.questionType)
-    ) {
-      correct = true; // ✅ for now, always mark true
-    }
-
-    if (correct) {
-      correctCount++;
-      score += userQuestion.question.points || 1; // default 1 if no points field
-    }
-
-    // 🔄 Save correctness to DB
-    await UserQuestionModel.updateOne(
-      { _id: userQuestion._id },
-      { $set: { correct: correct } }
-    );
   }
 
-  const incorrectCount = totalCount - correctCount;
+  const incorrectCount = totalQuestions - totalCorrect;
 
-  // 🔄 Update attempt summary
-  attempt.score = score;
-  attempt.correctAnswers = correctCount;
+  // Update each section stats
+  if (attempt.sections?.length) {
+    for (const section of attempt.sections) {
+      const sectionTotal = section.questions.length;
+
+      const sectionCorrect = section.questions.filter((q: any) => q.correct).length;
+      const sectionScore = section.questions.reduce(
+        (sum: number, q: any) => sum + (q.correct ? q.question.points || 1 : 0),
+        0
+      );
+
+      const sectionAnswered = section.questions.filter(
+        (q: any) =>
+          (q.selectedOptions?.length ?? 0) > 0 ||
+          Boolean(q.textAnswer?.trim())
+      ).length;
+
+      section.score = sectionScore;
+      section.correctAnswers = sectionCorrect;
+      section.incorrectAnswers = sectionTotal - sectionCorrect;
+      section.percentage = sectionTotal ? (sectionCorrect / sectionTotal) * 100 : 0;
+      section.status =
+        sectionAnswered >= sectionTotal ? "completed" : "in_progress";
+      section.completedAt =
+        section.status === "completed" ? new Date() : null;
+      section.timeTaken =
+        section.completedAt && section.startedAt
+          ? (section.completedAt.getTime() - section.startedAt.getTime()) / 1000
+          : 0;
+    }
+  }
+
+  // Update attempt summary
+  attempt.score = totalScore;
+  attempt.correctAnswers = totalCorrect;
   attempt.incorrectAnswers = incorrectCount;
-  attempt.percentage = totalCount > 0 ? (score / totalCount) * 100 : 0;
-  attempt.completedAt = new Date();
+  attempt.percentage = totalQuestions
+    ? (totalScore / totalQuestions) * 100
+    : 0;
+  attempt.status = attempt.sections?.every((s: any) => s.status === "completed")
+    ? "completed"
+    : "in_progress";
+  attempt.completedAt =
+    attempt.status === "completed" ? new Date() : null;
   attempt.timeTaken =
-    (attempt.completedAt.getTime() - attempt.startedAt.getTime()) / 1000; // in seconds
-  attempt.status = "completed";
+    attempt.completedAt && attempt.startedAt
+      ? (attempt.completedAt.getTime() - attempt.startedAt.getTime()) / 1000
+      : 0;
 
   await attempt.save();
 
   return {
     message: "Success",
-    attemptId: attempt._id
+    attemptId: attempt._id.toString(),
+    score: attempt.score,
+    percentage: attempt.percentage,
+    correctAnswers: attempt.correctAnswers,
+    incorrectAnswers: attempt.incorrectAnswers,
+    status: attempt.status,
+    completedAt: attempt.completedAt,
+    sections: attempt.sections, // include per-section stats if needed
   };
 }
 

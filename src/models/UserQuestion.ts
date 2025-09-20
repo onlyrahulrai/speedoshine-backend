@@ -1,5 +1,9 @@
 import mongoose from "mongoose";
-import { OptionSchema } from "./Question";
+
+const UserOptionSchema = new mongoose.Schema({
+  text: { type: String, required: false },
+  correct: { type: Boolean, default: false, select: false },
+});
 
 const UserQuestionSchema = new mongoose.Schema(
   {
@@ -14,12 +18,7 @@ const UserQuestionSchema = new mongoose.Schema(
       ref: "Question",
       required: true,
     },
-    questionType: {
-      type: String,
-      enum: ["radio_choice", "multiple_choice", "fill_blank", "true_false", "essay", "short_answer"],
-      required: true
-    },
-    options: [OptionSchema],
+    options: [UserOptionSchema],
     selectedOptions: [
       {
         type: String,
