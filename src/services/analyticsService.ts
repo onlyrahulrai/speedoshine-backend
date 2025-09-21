@@ -1,7 +1,8 @@
 import QuizAttemptModel from "../models/QuizAttempt";
-import mongoose from "mongoose";
+import { Types } from "mongoose";
 import { LeaderboardResponse, QuizStatsResponse } from "../types/schema/Analytics";
 import { QuizAttemptListResponse, QuizAttemptResponse } from "../types/schema/QuizAttempt";
+import QuizAttempt from "../models/QuizAttempt";
 
 export async function getAttemptById(
   attemptId: string,
@@ -9,8 +10,8 @@ export async function getAttemptById(
 ): Promise<QuizAttemptResponse> {
   const attempt = await QuizAttemptModel.findById(attemptId).select("-questions -__v").populate([
     {
-      path:"quiz",
-      select:"title subtitle tagline description timeLimit"
+      path: "quiz",
+      select: "title subtitle tagline description timeLimit"
     }
   ]);
 
@@ -69,44 +70,81 @@ export async function getLeaderboard(
 }
 
 export async function getQuizStatistics(
-  quizId: string
-): Promise<QuizStatsResponse> {
-  const attempts = await QuizAttemptModel.find({ quiz: quizId, status: "completed" }).lean();
+  quizId?: string
+): Promise<QuizStatsResponse[]> {
+  try {
+    const match: Record<string, any> = {};
 
-  const totalAttempts = attempts.length;
-  const averageScore = totalAttempts
-    ? attempts.reduce((sum, a) => sum + a.score, 0) / totalAttempts
-    : 0;
+    if (quizId) {
+      match.quiz = new Types.ObjectId(quizId);
+    }
 
-  // Success rate = % of attempts with >= 50% score (adjust threshold as needed)
-  const passingAttempts = attempts.filter(a => a.percentage >= 50).length;
-  const successRate = totalAttempts ? (passingAttempts / totalAttempts) * 100 : 0;
+    const stats = await QuizAttempt.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: "$quiz",
+          totalParticipants: { $addToSet: "$user" },
+          statusBreakdown: { $push: "$status" },
+          avgScore: { $avg: "$score" },
+          avgPercentage: { $avg: "$percentage" },
+        }
+      },
+      {
+        $project: {
+          // quiz: "$_id",
+          totalParticipants: { $size: "$totalParticipants" },
+          inProgress: {
+            $size: {
+              $filter: {
+                input: "$statusBreakdown",
+                as: "s",
+                cond: { $eq: ["$$s", "in_progress"] }
+              }
+            }
+          },
+          completed: {
+            $size: {
+              $filter: {
+                input: "$statusBreakdown",
+                as: "s",
+                cond: { $eq: ["$$s", "completed"] }
+              }
+            }
+          },
+          avgScore: 1,
+          avgPercentage: 1,
+        }
+      },
+      // {
+      //   $lookup: {
+      //     from: "quizzes",
+      //     let: { quizId: "$quiz" },
+      //     pipeline: [
+      //       { $match: { $expr: { $eq: ["$_id", "$$quizId"] } } },
+      //       { $project: { title: 1, description: 1, totalMarks: 1 } }
+      //     ],
+      //     as: "quiz"
+      //   }
+      // },
+      // { $unwind: "$quiz" }
+    ]).exec();
 
-  return {
-    totalAttempts,
-    averageScore,
-    successRate,
-  };
+    // ✅ if quizId is passed, return single object instead of array
+    if (quizId) {
+      return stats[0] || {
+        _id: quizId,
+        "avgScore": 0,
+        "avgPercentage": 0,
+        "totalParticipants": 0,
+        "inProgress": 0,
+        "completed": 0
+      };
+    }
+
+    return stats;
+  } catch (error: any) {
+    throw new Error(error.message || "Internal Server Error");
+  }
 }
 
-// Utility function to map attempt document to response DTO
-function mapAttemptToResponse(doc: any): QuizAttemptResponse {
-  return {
-    id: doc._id.toString(),
-    quizId: doc.quiz.toString(),
-    userId: doc.user.toString(),
-    answers: doc.answers.map((a: any) => ({
-      questionId: a.questionId.toString(),
-      selectedOptions: a.selectedOptions,
-      isCorrect: a.isCorrect,
-      timeTaken: a.timeTaken,
-    })),
-    score: doc.score,
-    percentage: doc.percentage,
-    correctAnswers: doc.correctAnswers,
-    incorrectAnswers: doc.incorrectAnswers,
-    startedAt: doc.startedAt.toISOString(),
-    completedAt: doc.completedAt ? doc.completedAt.toISOString() : undefined,
-    status: doc.status,
-  };
-}

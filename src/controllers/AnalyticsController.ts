@@ -74,12 +74,12 @@ export class AnalyticsController extends Controller {
   }
 
   @Security("jwt")
-  @Get("quiz/{quizId}/stats")
+  @Get("quizzes/")
   @SuccessResponse<QuizStatsResponse>(200, "Quiz statistics retrieved")
   @Response<ErrorMessageResponse>(400, "Invalid quiz id")
   public async getQuizStats(
-    @Path() quizId: string
+    @Query() quizId?: string
   ): Promise<QuizStatsResponse> {
-    return QuizAttemptService.getQuizStatistics(quizId);
+    return AnalyticsService.getQuizStatistics(quizId);
   }
 }

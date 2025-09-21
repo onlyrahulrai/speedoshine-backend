@@ -17,7 +17,6 @@ import {
 import * as QuizAttemptService from "../services/quizAttemptService";
 import {
   QuizAttemptResponse,
-  SubmitAnswersRequest,
 } from "../types/schema/QuizAttempt";
 
 import { ErrorMessageResponse } from "../types/schema/Common";
@@ -27,6 +26,25 @@ import { QuestionResponse } from "../types/schema/Question";
 @Route("quiz-attempts")
 @Tags("QuizAttempt")
 export class QuizAttemptController extends Controller {
+  @Security("jwt")
+  @Get("/")
+  @SuccessResponse<QuizAttemptResponse>(200, "Quiz attempt retrieved")
+  @Response<ErrorMessageResponse>(400, "Invalid attempt id")
+  public async getAttempts(
+    @Request() req: any,
+    @Query() page?: number,
+    @Query() limit?: number,
+  ): Promise<QuizAttemptResponse> {
+    const userId = req.user?._id;
+
+    if (!userId) {
+      this.setStatus(400);
+      return { message: "Invalid attempt id or user" } as any;
+    }
+
+    return QuizAttemptService.getAttempts(userId, page, limit);
+  }
+
   @Security("jwt")
   @Post("start/{quizId}")
   @SuccessResponse<QuizAttemptResponse>(201, "Quiz attempt started")

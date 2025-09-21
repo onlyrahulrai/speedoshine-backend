@@ -483,7 +483,7 @@ export async function submitAnswers(
 }
 
 // Fetch paginated quiz attempts for the authenticated user
-export async function getUserAttempts(
+export async function getAttempts(
   userId: string,
   page = 1,
   limit = 10
@@ -491,7 +491,10 @@ export async function getUserAttempts(
   const skip = (page - 1) * limit;
 
   const [results, total] = await Promise.all([
-    QuizAttemptModel.find({ user: userId })
+    QuizAttemptModel.find({ user: userId }).select("quiz score percentage correctAnswers incorrectAnswers status completedAt timeTaken startedAt").populate([{
+      path: "quiz",
+      select: "title subtitle tagline"
+    }])
       .sort({ startedAt: -1 })
       .skip(skip)
       .limit(limit)
@@ -500,33 +503,10 @@ export async function getUserAttempts(
   ]);
 
   return {
-    results: results.map(mapAttemptToResponse),
+    results,
     total,
     page,
     limit,
   };
 }
-
-// Helper functions
-function mapAttemptToResponse(doc: any): QuizAttemptResponse {
-  return {
-    id: doc._id.toString(),
-    quizId: doc.quiz.toString(),
-    userId: doc.user.toString(),
-    answers: doc.answers.map((a: any) => ({
-      questionId: a.questionId.toString(),
-      selectedOptions: a.selectedOptions,
-      isCorrect: a.isCorrect,
-      timeTaken: a.timeTaken,
-    })),
-    score: doc.score,
-    percentage: doc.percentage,
-    correctAnswers: doc.correctAnswers,
-    incorrectAnswers: doc.incorrectAnswers,
-    startedAt: doc.startedAt.toISOString(),
-    completedAt: doc.completedAt ? doc.completedAt.toISOString() : undefined,
-    status: doc.status,
-  };
-}
-
 
