@@ -66,9 +66,25 @@ export class QuizController extends Controller {
   @SuccessResponse<QuizResponse>(200, "Quiz retrieved successfully")
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   @Response<ErrorMessageResponse>(400, "Invalid quiz id supplied")
-  public async getQuiz(@Path() id: string,  @Query() flag?: string,): Promise<QuizResponse | null> {
+  public async getQuiz(@Path() id: string, @Query() flag?: string,): Promise<QuizResponse | null> {
     return QuizService.getQuizById(id, flag);
   }
+
+  @Get("{id}/participants")
+  @SuccessResponse<QuizResponse>(200, "Quiz participants retrieved successfully")
+  @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+  @Response<ErrorMessageResponse>(400, "Invalid quiz id supplied")
+  public async getQuizParticipants(
+    @Path() id: string,
+    @Query() page?: number,
+    @Query() limit?: number,
+    @Query() status?: string,
+    @Query() score?: string,
+    @Query() search?: string,
+  ): Promise<QuizResponse | null> {
+    return QuizService.getQuizParticipants(id, { status, score, search, page, limit });
+  }
+
 
   @Security("jwt")
   @Post("/")
@@ -76,12 +92,12 @@ export class QuizController extends Controller {
   @Response<FieldValidationError>(422, "Validation error")
   @Response<ErrorMessageResponse>(400, "Invalid request parameters")
   public async createQuiz(@Body() body: QuizRequest): Promise<QuizResponse | FieldValidationError | ErrorMessageResponse> {
-     try {
+    try {
       const errors = await validateManageAssessment(body);
 
       if (Object.keys(errors).length > 0) {
         this.setStatus(422);
-        return { type:"fields", errors };
+        return { type: "fields", errors };
       }
 
       return await QuizService.createQuiz(body);
@@ -106,7 +122,7 @@ export class QuizController extends Controller {
 
       if (Object.keys(errors).length > 0) {
         this.setStatus(422);
-        return { type:"fields", errors };
+        return { type: "fields", errors };
       }
 
       const quiz = await QuizService.updateQuiz(id, body);
