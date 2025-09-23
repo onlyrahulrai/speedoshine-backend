@@ -1,14 +1,25 @@
-import QuizModel from "../models/Quiz"; // your mongoose Quiz model
-import QuizAttemptModel from "../models/QuizAttempt"; // mongoose QuizAttempt model
-import QuestionModel from "../models/Question"; // mongoose Question model
+import QuizModel from "../models/Quiz"; 
+import QuizAttemptModel from "../models/QuizAttempt"; 
+import QuestionModel from "../models/Question"; 
 import SectionModel from "../models/Section";
+import { Types } from "mongoose";
 
 interface PaginationParams {
   page?: number;
   limit?: number;
+}
+
+interface AllQuizFilters extends PaginationParams {
   category?: string;
   difficulty?: string;
   tags?: string[];
+  search?: string;
+}
+
+interface ParticipantFilters extends PaginationParams {
+  flag?: string;
+  status?: string;
+  score?: string;
   search?: string;
 }
 
@@ -19,7 +30,7 @@ export async function getAllQuizzes({
   difficulty,
   tags,
   search
-}: PaginationParams) {
+}: AllQuizFilters) {
   const skip = (page - 1) * limit;
 
   // Build query object
@@ -342,4 +353,101 @@ export async function getQuizAttempts(quizId: string, userId?: string) {
     page: 1,
     limit: results.length,
   };
+}
+
+export async function getQuizParticipants(
+  quizId: string,
+  filters: ParticipantFilters = {}
+) {
+  try {
+    if (!Types.ObjectId.isValid(quizId)) {
+      throw new Error("Invalid quiz id supplied");
+    }
+
+    const match: Record<string, any> = { quiz: new Types.ObjectId(quizId) };
+
+    // ✅ apply filters
+    if (filters.status) {
+      match.status = filters.status; // "completed" | "in_progress"
+    }
+
+    if (filters.score) {
+      const scoreNum = parseFloat(filters.score);
+      if (!isNaN(scoreNum)) {
+        match.score = { $gte: scoreNum };
+      }
+    }
+
+    const page = filters.page && filters.page > 0 ? filters.page : 1;
+    const limit = filters.limit && filters.limit > 0 ? filters.limit : 10;
+    const skip = (page - 1) * limit;
+
+    const basePipeline: any[] = [
+      { $match: match },
+      {
+        $lookup: {
+          from: "users",
+          localField: "user",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: "$user" },
+    ];
+
+    // ✅ optional text search
+    if (filters.search) {
+      basePipeline.push({
+        $match: {
+          $or: [
+            { "user.name": { $regex: filters.search, $options: "i" } },
+            { "user.email": { $regex: filters.search, $options: "i" } },
+          ],
+        },
+      });
+    }
+
+    // ✅ total count first
+    const totalResult = await QuizAttemptModel.aggregate([
+      ...basePipeline,
+      { $count: "count" },
+    ]).exec();
+
+    const total = totalResult.length > 0 ? totalResult[0].count : 0;
+
+    // ✅ fetch paginated participants
+    const results = await QuizAttemptModel.aggregate([
+      ...basePipeline,
+      { $sort: { createdAt: -1 } }, // latest first
+      { $skip: skip },
+      { $limit: limit },
+      {
+        $project: {
+          _id: 1,
+          status: 1,
+          score: 1,
+          percentage: 1,
+          createdAt: 1,
+          startedAt: 1,
+          completedAt: 1,
+          timeTaken:1,
+          "user._id": 1,
+          "user.firstName": 1,
+          "user.lastName": 1,
+          "user.email": 1,
+        },
+      },
+    ]).exec();
+
+    return {
+      results,
+      page,
+      limit,
+      total,
+      hasNext: page * limit < total,
+      hasPrev: page > 1,
+    };
+  } catch (error: any) {
+    throw new Error(error.message || "Internal Server Error");
+  }
 }
