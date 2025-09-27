@@ -36,7 +36,7 @@ export class AnalyticsController extends Controller {
   @SuccessResponse<QuizAttemptResponse>(200, "Quiz attempt results retrieved")
   @Response<ErrorMessageResponse>(400, "Invalid attempt id")
   public async getAttemptResults(
-    @Path() attemptId: string,
+    @Path() attemptId?: string,
     @Request() req: any
   ): Promise<QuizAttemptResponse> {
     const userId = req.user?._id;
