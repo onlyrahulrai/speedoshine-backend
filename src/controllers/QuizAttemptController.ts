@@ -82,6 +82,25 @@ export class QuizAttemptController extends Controller {
   }
 
   @Security("jwt")
+  @Put("{attemptId}")
+  @SuccessResponse<QuizAttemptResponse>(200, "Quiz attempt updated successfully")
+  @Response<ErrorMessageResponse>(400, "Failed to update quiz attempt: invalid attempt ID or request data")
+  public async editAttempt(
+    @Path() attemptId: string,
+    @Request() req: any,
+    @Body() body: any,
+  ): Promise<QuizAttemptResponse> {
+    const userId = req.user?._id;
+
+    if (!attemptId || !userId) {
+      this.setStatus(400);
+      return { message: "Invalid attempt ID or unauthorized user" } as any;
+    }
+
+    return QuizAttemptService.editAttempt(attemptId, body);
+  }
+
+  @Security("jwt")
   @Get("{attemptId}")
   @SuccessResponse<QuizAttemptResponse>(200, "Quiz attempt retrieved")
   @Response<ErrorMessageResponse>(400, "Invalid attempt id")

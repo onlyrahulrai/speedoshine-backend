@@ -70,6 +70,21 @@ export class QuizController extends Controller {
     return QuizService.getQuizById(id, flag);
   }
 
+  /**
+ * Get the Excel report for a specific quiz
+ */
+  @Get("{id}/report/excel")
+  @SuccessResponse<{path?: string}>(200, "Quiz report retrieved successfully")
+  @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+  @Response<ErrorMessageResponse>(400, "Invalid quiz id supplied")
+  public async getQuizReportExcel(
+    @Path() id: string
+  ): Promise<Buffer> {
+    // Call a service that generates the Excel report
+    return QuizService.generateExcelReport(id);
+  }
+
+
   @Get("{id}/participants")
   @SuccessResponse<QuizResponse>(200, "Quiz participants retrieved successfully")
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")

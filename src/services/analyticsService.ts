@@ -3,6 +3,7 @@ import { Types } from "mongoose";
 import { LeaderboardResponse, QuizStatsResponse } from "../types/schema/Analytics";
 import { QuizAttemptListResponse, QuizAttemptResponse } from "../types/schema/QuizAttempt";
 import QuizAttempt from "../models/QuizAttempt";
+import Quiz from "../models/Quiz";
 
 export async function getAttemptById(
   attemptId: string,
@@ -92,7 +93,7 @@ export async function getQuizStatistics(
       },
       {
         $project: {
-          // quiz: "$_id",
+          quiz: "$_id",
           totalParticipants: { $size: "$totalParticipants" },
           inProgress: {
             $size: {
@@ -116,18 +117,18 @@ export async function getQuizStatistics(
           avgPercentage: 1,
         }
       },
-      // {
-      //   $lookup: {
-      //     from: "quizzes",
-      //     let: { quizId: "$quiz" },
-      //     pipeline: [
-      //       { $match: { $expr: { $eq: ["$_id", "$$quizId"] } } },
-      //       { $project: { title: 1, description: 1, totalMarks: 1 } }
-      //     ],
-      //     as: "quiz"
-      //   }
-      // },
-      // { $unwind: "$quiz" }
+      {
+        $lookup: {
+          from: "quizzes",
+          let: { quizId: "$quiz" },
+          pipeline: [
+            { $match: { $expr: { $eq: ["$_id", "$$quizId"] } } },
+            { $project: { title: 1, description: 1, totalMarks: 1, scoringEnabled: 1 } }
+          ],
+          as: "quiz"
+        }
+      },
+      { $unwind: "$quiz" }
     ]).exec();
 
     // ✅ if quizId is passed, return single object instead of array

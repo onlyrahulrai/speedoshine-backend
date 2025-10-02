@@ -13,7 +13,6 @@ import {
   Response,
   Query,
 } from "tsoa";
-
 import * as UserService from "../services/userService";
 import {
   UserListResponse,
@@ -44,6 +43,22 @@ export class UserController extends Controller {
   ): Promise<UserListResponse> {
     return await UserService.getAllUsers(page, limit);
   }
+
+  @Security("jwt")
+  @Get("/assessments/summary")
+  @SuccessResponse<UserListResponse>(
+    200,
+    "User assessment summaries retrieved successfully"
+  )
+  @Response<AuthenticationRequiredResponse>(401, "Authentication is required to access this resource")
+  @Response<ErrorMessageResponse>(400, "Invalid request parameters")
+  public async getUsersAssessmentSummary(
+    @Query() page?: number,
+    @Query() limit?: number
+  ): Promise<UserListResponse> {
+    return await UserService.getUserAssessmentSummary({ page, limit });
+  }
+
 
   @Security("jwt")
   @Get("{id}")

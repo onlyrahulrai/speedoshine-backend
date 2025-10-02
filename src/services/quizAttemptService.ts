@@ -318,8 +318,6 @@ export async function saveAnswer({
 
   const { question } = userQuestion;
 
-  console.log("Question fetched:", question);
-
   // ✅ Handle answers
   if (["multiple_choice", "radio_choice", "true_false"].includes(question.questionType)) {
     if (selectedOptions || textAnswer) {
@@ -378,6 +376,10 @@ export async function submitAnswers(
     user: userId,
   }).populate([
     {
+      path: "quiz",
+      select: "_id title description type totalMarks",
+    },
+    {
       path: "sections",
       populate: {
         path: "questions",
@@ -424,6 +426,7 @@ export async function submitAnswers(
       const sectionTotal = section.questions.length;
 
       const sectionCorrect = section.questions.filter((q: any) => q.correct).length;
+
       const sectionScore = section.questions.reduce(
         (sum: number, q: any) => sum + (q.correct ? q.question.points || 1 : 0),
         0
@@ -438,7 +441,7 @@ export async function submitAnswers(
       section.score = sectionScore;
       section.correctAnswers = sectionCorrect;
       section.incorrectAnswers = sectionTotal - sectionCorrect;
-      section.percentage = sectionTotal ? (sectionCorrect / sectionTotal) * 100 : 0;
+      section.percentage =  (sectionScore / attempt?.quiz?.totalMarks) * 100;
       section.status =
         sectionAnswered >= sectionTotal ? "completed" : "in_progress";
       section.completedAt =
@@ -454,9 +457,7 @@ export async function submitAnswers(
   attempt.score = totalScore;
   attempt.correctAnswers = totalCorrect;
   attempt.incorrectAnswers = incorrectCount;
-  attempt.percentage = totalQuestions
-    ? (totalScore / totalQuestions) * 100
-    : 0;
+  attempt.percentage = (totalScore / attempt?.quiz?.totalMarks) * 100;
   attempt.status = attempt.sections?.every((s: any) => s.status === "completed")
     ? "completed"
     : "in_progress";
@@ -491,9 +492,9 @@ export async function getAttempts(
   const skip = (page - 1) * limit;
 
   const [results, total] = await Promise.all([
-    QuizAttemptModel.find({ user: userId }).select("quiz score percentage correctAnswers incorrectAnswers status completedAt timeTaken startedAt").populate([{
+    QuizAttemptModel.find({ user: userId }).select("quiz score percentage correctAnswers incorrectAnswers status completedAt timeTaken startedAt report").populate([{
       path: "quiz",
-      select: "title subtitle tagline"
+      select: "title subtitle tagline scoringEnabled"
     }])
       .sort({ startedAt: -1 })
       .skip(skip)
@@ -510,3 +511,20 @@ export async function getAttempts(
   };
 }
 
+export async function editAttempt(attemptId?: string, body: any) {
+  try {
+    const updatedAttempt = await QuizAttemptModel.findByIdAndUpdate(
+      attemptId,
+      { $set: body },
+      { new: true }
+    );
+
+    if (!updatedAttempt) {
+      throw new Error("Quiz attempt not found");
+    }
+
+    return updatedAttempt;
+  } catch (error: any) {
+    throw new Error(error.message || "Internal Server Error");
+  }
+}

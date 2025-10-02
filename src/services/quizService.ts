@@ -1,7 +1,10 @@
-import QuizModel from "../models/Quiz"; 
-import QuizAttemptModel from "../models/QuizAttempt"; 
-import QuestionModel from "../models/Question"; 
+import QuizModel from "../models/Quiz";
+import QuizAttemptModel from "../models/QuizAttempt";
+import QuestionModel from "../models/Question";
 import SectionModel from "../models/Section";
+import ExcelJS from "exceljs";
+import fs from "fs";
+import path from "path";
 import { Types } from "mongoose";
 
 interface PaginationParams {
@@ -77,7 +80,7 @@ export async function getQuizById(id: string, flag?: "edit" | "attempts") {
   try {
     const populateOptions = [];
 
-    if (flag === "edit"){
+    if (flag === "edit") {
       populateOptions.push(
         {
           path: "questions",
@@ -94,7 +97,7 @@ export async function getQuizById(id: string, flag?: "edit" | "attempts") {
       );
     }
 
-    if (flag === "attempts"){
+    if (flag === "attempts") {
       populateOptions.push(
         {
           path: "sections",
@@ -140,6 +143,8 @@ export async function createQuiz(data: any) {
       shuffleOptions,
       allowBackNavigation,
       type,
+      fees,
+      scoringEnabled,
       visibility,
       scheduledAt,
       isActive,
@@ -162,6 +167,8 @@ export async function createQuiz(data: any) {
       shuffleOptions: any;
       allowBackNavigation: any;
       visibility: any;
+      scoringEnabled: any;
+      fees: any;
       type: any;
       scheduledAt: any;
       isActive: any;
@@ -184,6 +191,8 @@ export async function createQuiz(data: any) {
       shuffleQuestions,
       shuffleOptions,
       allowBackNavigation,
+      scoringEnabled,
+      fees,
       visibility,
       scheduledAt,
       isActive,
@@ -372,9 +381,12 @@ export async function getQuizParticipants(
     }
 
     if (filters.score) {
-      const scoreNum = parseFloat(filters.score);
-      if (!isNaN(scoreNum)) {
-        match.score = { $gte: scoreNum };
+      if (filters.score === "high") {
+        match.score = { $gte: 80 }; // 80 and above
+      } else if (filters.score === "medium") {
+        match.score = { $gte: 70, $lt: 80 }; // 70 to 79
+      } else if (filters.score === "low") {
+        match.score = { $lte: 60 }; // 60 and below
       }
     }
 
@@ -400,7 +412,8 @@ export async function getQuizParticipants(
       basePipeline.push({
         $match: {
           $or: [
-            { "user.name": { $regex: filters.search, $options: "i" } },
+            { "user.firstName": { $regex: filters.search, $options: "i" } },
+            { "user.lastName": { $regex: filters.search, $options: "i" } },
             { "user.email": { $regex: filters.search, $options: "i" } },
           ],
         },
@@ -430,7 +443,8 @@ export async function getQuizParticipants(
           createdAt: 1,
           startedAt: 1,
           completedAt: 1,
-          timeTaken:1,
+          report: 1,
+          timeTaken: 1,
           "user._id": 1,
           "user.firstName": 1,
           "user.lastName": 1,
@@ -446,6 +460,160 @@ export async function getQuizParticipants(
       total,
       hasNext: page * limit < total,
       hasPrev: page > 1,
+    };
+  } catch (error: any) {
+    throw new Error(error.message || "Internal Server Error");
+  }
+}
+
+export async function generateExcelReport(_id: string): Promise<{ path: string }> {
+  try {
+    // 1. Fetch quiz and attempts
+    const quiz = await QuizModel.findOne({ _id });
+    if (!quiz) throw new Error("Quiz not found");
+
+    const attempts = await QuizAttemptModel.find({ quiz: quiz._id })
+      .populate([
+        {
+          path: "quiz",
+          select: "_id title description type",
+        },
+        {
+          path: "sections",
+          populate: [
+            {
+              path: "section",
+              select: "title",
+            },
+            {
+              path: "questions",
+              select:
+                "_id attempt question options.text options._id selectedOptions textAnswer answeredAt",
+              populate: {
+                path: "question",
+                select: "_id questionText questionType media points timeLimit",
+              },
+            },
+          ],
+        },
+        {
+          path: "questions",
+          select:
+            "_id attempt question options.text options._id selectedOptions textAnswer answeredAt",
+          populate: {
+            path: "question",
+            select: "_id questionText questionType media points timeLimit",
+          },
+        },
+      ])
+      .lean();
+
+    if (attempts.length === 0) throw new Error("No attempts found");
+
+    // 2. Create workbook
+    const workbook = new ExcelJS.Workbook();
+
+    if (quiz.type === "standard") {
+      // ✅ STANDARD QUIZ (questions are directly on attempt)
+      const sheet = workbook.addWorksheet("Responses");
+
+      // Header row → Timestamp + all questions
+      const headerRow = ["Timestamp", ...attempts[0].questions.map((q: any) => q.question.questionText)];
+      sheet.addRow(headerRow);
+
+      // Add answers
+      for (const attempt of attempts) {
+        const answerRow = [
+          attempt.completedAt ? new Date(attempt.completedAt).toLocaleString() : "N/A",
+          ...attempt.questions.map((q: any) => {
+            switch (q.question.questionType) {
+              case "multiple_choice":
+              case "radio_choice":
+              case "true_false":
+                return q.selectedOptions?.join(", ") || "No answer";
+              case "fill_in_blank":
+              case "essay":
+              case "short_answer":
+                return q.textAnswer || "No answer";
+              default:
+                return "Unknown type";
+            }
+          }),
+        ];
+        sheet.addRow(answerRow);
+      }
+
+      // Auto column width
+      sheet.columns.forEach((col) => {
+        let maxLength = 10;
+        col.eachCell({ includeEmpty: true }, (cell) => {
+          const cellLength = (cell.value?.toString().length || 0) + 2;
+          if (cellLength > maxLength) maxLength = cellLength;
+        });
+        col.width = maxLength;
+      });
+    } else {
+      // ✅ SECTIONED QUIZ (questions grouped in sections)
+      const firstAttempt = attempts[0];
+      for (const sec of firstAttempt.sections) {
+        const sheetName = sec.section.title.substring(0, 31);
+        const sheet = workbook.addWorksheet(sheetName);
+
+        // Header row → Timestamp + questions in this section
+        const headerRow = ["Timestamp", ...sec.questions.map((q: any) => q.question.questionText)];
+        sheet.addRow(headerRow);
+
+        for (const attempt of attempts) {
+          const section = attempt.sections.find(
+            (s: any) => s.section._id.toString() === sec.section._id.toString()
+          );
+
+          const answerRow = [
+            attempt.completedAt ? new Date(attempt.completedAt).toLocaleString() : "N/A",
+            ...section.questions.map((q: any) => {
+              switch (q.question.questionType) {
+                case "multiple_choice":
+                case "radio_choice":
+                case "true_false":
+                  return q.selectedOptions?.join(", ") || "No answer";
+                case "fill_in_blank":
+                case "essay":
+                case "short_answer":
+                  return q.textAnswer || "No answer";
+                default:
+                  return "Unknown type";
+              }
+            }),
+          ];
+          sheet.addRow(answerRow);
+        }
+
+        sheet.columns.forEach((col) => {
+          let maxLength = 10;
+          col.eachCell({ includeEmpty: true }, (cell) => {
+            const cellLength = (cell.value?.toString().length || 0) + 2;
+            if (cellLength > maxLength) maxLength = cellLength;
+          });
+          col.width = maxLength;
+        });
+      }
+    }
+
+    // 3. Ensure reports dir exists
+    const reportsDir = path.join(process.cwd(), "uploads", "reports");
+    if (!fs.existsSync(reportsDir)) {
+      fs.mkdirSync(reportsDir, { recursive: true });
+    }
+
+    // 4. File path
+    const fileName = `quiz-report-${_id}-${Date.now()}.xlsx`;
+    const filePath = path.join(reportsDir, fileName);
+
+    // 5. Save
+    await workbook.xlsx.writeFile(filePath);
+
+    return {
+      path: `uploads/reports/${fileName}`,
     };
   } catch (error: any) {
     throw new Error(error.message || "Internal Server Error");

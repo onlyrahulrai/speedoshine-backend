@@ -77,7 +77,7 @@ export const updateUser = async (
   }
 
   return await User.findByIdAndUpdate(id, data, { new: true })
-    .select("-password") 
+    .select("-password")
     .lean();
 };
 
@@ -86,3 +86,84 @@ export const deleteUser = async (
 ): Promise<Partial<IUser> | null> => {
   return await User.findByIdAndDelete(id).select("-password").lean();
 };
+
+export const getUserAssessmentSummary = async (
+  filters: { page?: number; limit?: number } = {}
+) => {
+  try {
+    // Use defaults if not provided
+    const page = Number(filters.page ?? 1);
+    const limit = Number(filters.limit ?? 10);
+    const skip = (page - 1) * limit;
+
+    // Total number of users for pagination
+    const total = await User.countDocuments();
+
+    // Aggregate users with latest attempt, total attempts, and populated quiz
+    const results = await User.aggregate([
+      {
+        $lookup: {
+          from: "quizattempts",
+          localField: "_id",
+          foreignField: "user",
+          as: "attempts",
+        },
+      },
+      {
+        $addFields: {
+          totalAttempts: { $size: "$attempts" },
+          latestAttempt: { $arrayElemAt: ["$attempts", -1] },
+        },
+      },
+      {
+        $lookup: {
+          from: "quizzes",
+          localField: "latestAttempt.quiz",
+          foreignField: "_id",
+          as: "latestAttempt.quiz",
+        },
+      },
+      {
+        $addFields: {
+          "latestAttempt.quiz": { $arrayElemAt: ["$latestAttempt.quiz", 0] },
+        },
+      },
+      {
+        $project: {
+          firstName: 1,
+          lastName: 1,
+          email: 1,
+          totalAttempts: 1,
+          latestAttempt: {
+            quiz: {
+              _id: 1,
+              title: 1,
+              description: 1,
+              totalMarks: 1,
+            },
+            score: 1,
+            percentage: 1,
+            status: 1,
+            completedAt: 1,
+          },
+        },
+      },
+      { $sort: { firstName: 1 } },
+      { $skip: skip },
+      { $limit: limit },
+    ]);
+
+    return {
+      page,
+      limit,
+      hasPrev: page > 1,
+      hasNext: skip + results.length < total,
+      total,
+      results,
+    };
+  } catch (error: any) {
+    console.error(error);
+    throw new Error(error.message || "Internal Server Error");
+  }
+};
+

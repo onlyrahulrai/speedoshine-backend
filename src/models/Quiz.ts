@@ -6,6 +6,7 @@ const QuizSchema = new mongoose.Schema(
     subtitle: { type: String },
     tagline: { type: String },
     description: { type: String },
+    fees: { type: Number, default: 0 },
     features: [String],
     focusAreas: [String],
     category: { type: String, index: true },
@@ -33,7 +34,7 @@ const QuizSchema = new mongoose.Schema(
       },
     ],
 
-    type:{
+    type: {
       type: String,
       enum: ["standard", "multi-section"],
       default: "standard",
@@ -45,6 +46,7 @@ const QuizSchema = new mongoose.Schema(
     shuffleQuestions: { type: Boolean, default: false },
     shuffleOptions: { type: Boolean, default: false },
     allowBackNavigation: { type: Boolean, default: true },
+    scoringEnabled: { type: Boolean, default: false },
 
     // Creator & access
     createdBy: {

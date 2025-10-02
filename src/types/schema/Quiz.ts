@@ -47,10 +47,12 @@ export interface QuizRequest {
   difficulty?: "easy" | "medium" | "hard";
   tags?: string[];
   totalMarks?: number;
+  fees?: number;
   timeLimit?: number;
   shuffleQuestions?: boolean;
   shuffleOptions?: boolean;
   allowBackNavigation?: boolean;
+  scoringEnabled?: boolean;
   type?: "standard" | "multi-section"; // standard or multi-section
   visibility?: "public" | "private" | "unlisted";
   scheduledAt?: string; // ISO date string
