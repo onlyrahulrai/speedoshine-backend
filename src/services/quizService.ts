@@ -37,35 +37,54 @@ export async function getAllQuizzes({
   const skip = (page - 1) * limit;
 
   // Build query object
-  const query: any = {};
+  const match: any = {};
 
   if (category && category !== "all") {
-    query.category = category;
+    match.category = category;
   }
 
   if (difficulty && difficulty !== "all") {
-    query.difficulty = difficulty;
+    match.difficulty = difficulty;
   }
 
   if (tags && tags.length > 0) {
-    query.tags = { $in: tags };
+    match.tags = { $in: tags };
   }
 
   if (search) {
-    query.title = { $regex: search, $options: "i" };
+    match.title = { $regex: search, $options: "i" };
   }
 
+  const pipeline: any[] = [
+    { $match: match },
+    { $sort: { createdAt: -1 } }, // optional sorting
+    { $skip: skip },
+    { $limit: limit },
+    // Lookup attempts to count participants
+    {
+      $lookup: {
+        from: "quizattempts",
+        localField: "_id",
+        foreignField: "quiz",
+        as: "attempts"
+      }
+    },
+    {
+      $addFields: {
+        participants: { $size: { $ifNull: ["$attempts", []] } }
+      }
+    },
+    {
+      $project: {
+        attempts: 0 // exclude full attempts
+      }
+    }
+  ];
+
+  // Run aggregation and count query in parallel
   const [results, total] = await Promise.all([
-    QuizModel.find(query)
-      .populate([
-        {
-          path: "questions",
-        },
-      ])
-      .skip(skip)
-      .limit(limit)
-      .lean(),
-    QuizModel.countDocuments(query),
+    QuizModel.aggregate(pipeline),
+    QuizModel.countDocuments(match)
   ]);
 
   return {
@@ -73,6 +92,8 @@ export async function getAllQuizzes({
     total,
     page,
     limit,
+    hasPrev: page > 1,
+    hasNext: skip + results.length < total
   };
 }
 
