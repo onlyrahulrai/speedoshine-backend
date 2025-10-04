@@ -1,7 +1,8 @@
+import "reflect-metadata";
+
 import dotenv from "dotenv";
 dotenv.config();
 
-import "reflect-metadata";
 import express, { Request, Response, NextFunction } from "express";
 import "colors";
 import { createServer } from "node:http";
