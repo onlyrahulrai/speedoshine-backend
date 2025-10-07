@@ -219,7 +219,7 @@ export class AuthController extends Controller {
   @SuccessResponse(202, "Email verification initiated")
   @Response<ErrorMessageResponse>(400, "Invalid request parameters or token")
   public async verifyEmail(
-    @Body() body: VerifyEmailInput
+    @Body() body?: VerifyEmailInput
   ): Promise<{ message: string } | ErrorMessageResponse> {
     try {
       const result = await AuthService.verifyEmail(body.token);
