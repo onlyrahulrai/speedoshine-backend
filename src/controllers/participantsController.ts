@@ -20,7 +20,7 @@ export class ParticipantController extends Controller {
   public async getParticipants(
     @Query() page?: number,
     @Query() limit?: number,
-    @Query() search: string
+    @Query() search?: string
   ): Promise<ParticipantResponse[]> {
     return ParticipantsService.getAllParticipants({
       page,
