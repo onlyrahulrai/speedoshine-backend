@@ -21,7 +21,7 @@ export class PermissionController extends Controller {
   }
 
   @Get('{id}')
-  public async getPermission(@Path() id: string): Promise<PermissionResponse | null> {
+  public async getPermission(@Path() id?: string): Promise<PermissionResponse | null> {
     return permissionService.getPermissionById(id);
   }
 
