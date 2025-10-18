@@ -31,7 +31,7 @@ export class QuizAttemptController extends Controller {
   @SuccessResponse<QuizAttemptResponse>(200, "Quiz attempt retrieved")
   @Response<ErrorMessageResponse>(400, "Invalid attempt id")
   public async getAttempts(
-    @Request() req: any,
+    @Request() req?: any,
     @Query() page?: number,
     @Query() limit?: number,
   ): Promise<QuizAttemptResponse> {
