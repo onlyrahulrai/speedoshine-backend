@@ -88,7 +88,7 @@ export class QuizAttemptController extends Controller {
   public async editAttempt(
     @Path() attemptId?: string,
     @Request() req: any,
-    @Body() body: any,
+    @Body() body?: any,
   ): Promise<QuizAttemptResponse> {
     const userId = req.user?._id;
 
