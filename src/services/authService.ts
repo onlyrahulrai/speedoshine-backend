@@ -6,8 +6,9 @@ import { EditProfileInput, RegisterInput } from "../types/schema/Auth";
 import User from "../models/User";
 import Role from "../models/Role";
 import { TokenBlacklist } from "../models/TokenBlacklist";
+import { v4 as uuidV4 } from "uuid";
 
-const myQueue = new Queue("Task");
+const myQueue = new Queue("DD-EmailTask");
 
 export const registerUser = async (data: RegisterInput) => {
   const { firstName, lastName, email, age, password } = data;
@@ -62,6 +63,8 @@ export const registerUser = async (data: RegisterInput) => {
         <p style="font-size: 14px; color: #888;">If you didn't sign up for an account, please ignore this email.</p>
       </div>
     `,
+    }, {
+      jobId: `verify-email-${uuidV4().split("-")[0]}`,
     });
 
     return userData;
