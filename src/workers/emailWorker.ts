@@ -2,7 +2,7 @@ import { Worker } from "bullmq";
 import { sendMail } from "../helper/utils/mailer";
 
 const worker = new Worker(
-  "Task",
+  "DD-EmailTask",
   async (job: { name: string; data: any }) => {
     console.log("----- Job Executed -----")
 
