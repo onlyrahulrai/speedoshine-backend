@@ -407,7 +407,7 @@ export async function submitAnswers(
 
   const totalQuestions = userQuestions.length;
 
-  // Aggregate stats in one pass
+  // --- Overall Score ---
   let totalCorrect = 0;
   let totalScore = 0;
 
@@ -419,8 +419,9 @@ export async function submitAnswers(
   }
 
   const incorrectCount = totalQuestions - totalCorrect;
+  const totalQuizMarks = attempt?.quiz?.totalMarks ?? 0;
 
-  // Update each section stats
+  // --- Section-wise Calculations ---
   if (attempt.sections?.length) {
     for (const section of attempt.sections) {
       const sectionTotal = section.questions.length;
@@ -428,7 +429,12 @@ export async function submitAnswers(
       const sectionCorrect = section.questions.filter((q: any) => q.correct).length;
 
       const sectionScore = section.questions.reduce(
-        (sum: number, q: any) => sum + (q.correct ? q.question.points || 1 : 0),
+        (sum: number, q: any) => sum + (q.correct ? q.question?.points || 1 : 0),
+        0
+      );
+
+      const sectionTotalMarks = section.questions.reduce(
+        (sum: number, q: any) => sum + (q.question?.points || 1),
         0
       );
 
@@ -438,35 +444,52 @@ export async function submitAnswers(
           Boolean(q.textAnswer?.trim())
       ).length;
 
+      const sectionPercentage =
+        sectionTotalMarks > 0 ? (sectionScore / sectionTotalMarks) * 100 : 0;
+
+      const isCompleted = sectionAnswered >= sectionTotal;
+      const completedAt = isCompleted ? new Date() : null;
+
+      const startTime = section.startedAt ? new Date(section.startedAt) : null;
+      const endTime = completedAt ? new Date(completedAt) : null;
+      const timeTaken =
+        startTime && endTime
+          ? (endTime.getTime() - startTime.getTime()) / 1000
+          : 0;
+
       section.score = sectionScore;
       section.correctAnswers = sectionCorrect;
       section.incorrectAnswers = sectionTotal - sectionCorrect;
-      section.percentage =  (sectionScore / attempt?.quiz?.totalMarks) * 100;
-      section.status =
-        sectionAnswered >= sectionTotal ? "completed" : "in_progress";
-      section.completedAt =
-        section.status === "completed" ? new Date() : null;
-      section.timeTaken =
-        section.completedAt && section.startedAt
-          ? (section.completedAt.getTime() - section.startedAt.getTime()) / 1000
-          : 0;
+      section.percentage = Number(sectionPercentage.toFixed(2));
+      section.status = isCompleted ? "completed" : "in_progress";
+      section.completedAt = completedAt;
+      section.timeTaken = timeTaken;
     }
   }
+
+  const overallPercentage =
+    totalQuizMarks > 0 ? (totalScore / totalQuizMarks) * 100 : 0;
+
+  const isAttemptCompleted =
+    attempt.sections?.length > 0
+      ? attempt.sections.every((s: any) => s.status === "completed")
+      : true;
+
+  const completedAt = isAttemptCompleted ? new Date() : null;
+  const startedAt = attempt.startedAt ? new Date(attempt.startedAt) : null;
+  const timeTaken =
+    startedAt && completedAt
+      ? (completedAt.getTime() - startedAt.getTime()) / 1000
+      : 0;
 
   // Update attempt summary
   attempt.score = totalScore;
   attempt.correctAnswers = totalCorrect;
   attempt.incorrectAnswers = incorrectCount;
-  attempt.percentage = (totalScore / attempt?.quiz?.totalMarks) * 100;
-  attempt.status = attempt.sections?.every((s: any) => s.status === "completed")
-    ? "completed"
-    : "in_progress";
-  attempt.completedAt =
-    attempt.status === "completed" ? new Date() : null;
-  attempt.timeTaken =
-    attempt.completedAt && attempt.startedAt
-      ? (attempt.completedAt.getTime() - attempt.startedAt.getTime()) / 1000
-      : 0;
+  attempt.percentage = Number(overallPercentage.toFixed(2));
+  attempt.status = isAttemptCompleted ? "completed" : "in_progress";
+  attempt.completedAt = completedAt;
+  attempt.timeTaken = timeTaken;
 
   await attempt.save();
 
