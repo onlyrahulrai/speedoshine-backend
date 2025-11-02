@@ -33,12 +33,12 @@ export const expressAuthentication = async (
       return decoded as { userId: number };
     } catch (err) {
       const e = new Error("Invalid or expired token") as any;
-      e.status = 403;
+      e.status = 401;
       throw e;
     }
   }
 
   const err = new Error("Unsupported security method") as any;
-  err.status = 403;
+  err.status = 401;
   throw err;
 };
