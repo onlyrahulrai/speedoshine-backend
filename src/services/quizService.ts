@@ -491,9 +491,10 @@ export async function generateExcelReport(_id: string): Promise<{ path: string }
   try {
     // 1. Fetch quiz and attempts
     const quiz = await QuizModel.findOne({ _id });
+
     if (!quiz) throw new Error("Quiz not found");
 
-    const attempts = await QuizAttemptModel.find({ quiz: quiz._id })
+    let attempts = await QuizAttemptModel.find({ quiz: quiz._id })
       .populate([
         {
           path: "quiz",
@@ -531,35 +532,59 @@ export async function generateExcelReport(_id: string): Promise<{ path: string }
 
     if (attempts.length === 0) throw new Error("No attempts found");
 
+    // Filter out incomplete attempts
+    attempts = attempts.sort((a, b) => {
+      if (a.status === b.status) return 0;
+      if (a.status === "completed") return -1;
+      if (b.status === "completed") return 1;
+      return 0;
+    });
+
     // 2. Create workbook
     const workbook = new ExcelJS.Workbook();
 
+    // ✅ STANDARD QUIZ
     if (quiz.type === "standard") {
-      // ✅ STANDARD QUIZ (questions are directly on attempt)
       const sheet = workbook.addWorksheet("Responses");
 
-      // Header row → Timestamp + all questions
-      const headerRow = ["Timestamp", ...attempts[0].questions.map((q: any) => q.question.questionText)];
+      // Collect all unique questions
+      const allQuestionsMap = new Map<string, string>();
+      for (const attempt of attempts) {
+        for (const q of attempt.questions) {
+          allQuestionsMap.set(q.question._id.toString(), q.question.questionText);
+        }
+      }
+
+      const allQuestionIds = Array.from(allQuestionsMap.keys());
+      const allQuestionTexts = Array.from(allQuestionsMap.values());
+
+      // Header row
+      const headerRow = ["Timestamp", ...allQuestionTexts];
       sheet.addRow(headerRow);
 
       // Add answers
       for (const attempt of attempts) {
+        const answersMap = new Map<string, string>();
+        for (const q of attempt.questions) {
+          let ans = "No answer";
+          switch (q.question.questionType) {
+            case "multiple_choice":
+            case "radio_choice":
+            case "true_false":
+              ans = q.selectedOptions?.join(", ") || "No answer";
+              break;
+            case "fill_in_blank":
+            case "essay":
+            case "short_answer":
+              ans = q.textAnswer || "No answer";
+              break;
+          }
+          answersMap.set(q.question._id.toString(), ans);
+        }
+
         const answerRow = [
           attempt.completedAt ? new Date(attempt.completedAt).toLocaleString() : "N/A",
-          ...attempt.questions.map((q: any) => {
-            switch (q.question.questionType) {
-              case "multiple_choice":
-              case "radio_choice":
-              case "true_false":
-                return q.selectedOptions?.join(", ") || "No answer";
-              case "fill_in_blank":
-              case "essay":
-              case "short_answer":
-                return q.textAnswer || "No answer";
-              default:
-                return "Unknown type";
-            }
-          }),
+          ...allQuestionIds.map((qid) => answersMap.get(qid) || "No answer"),
         ];
         sheet.addRow(answerRow);
       }
@@ -573,42 +598,82 @@ export async function generateExcelReport(_id: string): Promise<{ path: string }
         });
         col.width = maxLength;
       });
-    } else {
-      // ✅ SECTIONED QUIZ (questions grouped in sections)
-      const firstAttempt = attempts[0];
-      for (const sec of firstAttempt.sections) {
-        const sheetName = sec.section.title.substring(0, 31);
+    }
+
+    // ✅ SECTIONED QUIZ
+    else {
+      // ✅ Collect all unique sections across all attempts
+      const allSectionsMap = new Map<string, string>();
+      for (const attempt of attempts) {
+        for (const sec of attempt.sections || []) {
+          if (sec.section?._id) {
+            allSectionsMap.set(sec.section._id.toString(), sec.section.title);
+          }
+        }
+      }
+
+      const allSections = Array.from(allSectionsMap.entries());
+
+      const sanitizeSheetName = (name: string) =>
+        name.replace(/[\\/*?:[\]]/g, "").substring(0, 31);
+
+      for (const [sectionId, sectionTitle] of allSections) {
+        const sheetName = sanitizeSheetName(sectionTitle || "Untitled Section");
         const sheet = workbook.addWorksheet(sheetName);
 
-        // Header row → Timestamp + questions in this section
-        const headerRow = ["Timestamp", ...sec.questions.map((q: any) => q.question.questionText)];
-        sheet.addRow(headerRow);
-
+        // ✅ Collect all unique questions across all attempts in this section
+        const allQuestionsMap = new Map<string, string>();
         for (const attempt of attempts) {
           const section = attempt.sections.find(
-            (s: any) => s.section._id.toString() === sec.section._id.toString()
+            (s: any) => s.section._id.toString() === sectionId
           );
+          if (!section) continue;
+
+          for (const q of section.questions) {
+            allQuestionsMap.set(q.question._id.toString(), q.question.questionText);
+          }
+        }
+
+        const allQuestionIds = Array.from(allQuestionsMap.keys());
+        const allQuestionTexts = Array.from(allQuestionsMap.values());
+
+        // Header row → Timestamp + all questions
+        const headerRow = ["Timestamp", ...allQuestionTexts];
+        sheet.addRow(headerRow);
+
+        // ✅ Add answers
+        for (const attempt of attempts) {
+          const section = attempt.sections.find(
+            (s: any) => s.section._id.toString() === sectionId
+          );
+          if (!section) continue;
+
+          const answersMap = new Map<string, string>();
+          for (const q of section.questions) {
+            let ans = "No answer";
+            switch (q.question.questionType) {
+              case "multiple_choice":
+              case "radio_choice":
+              case "true_false":
+                ans = q.selectedOptions?.join(", ") || "No answer";
+                break;
+              case "fill_in_blank":
+              case "essay":
+              case "short_answer":
+                ans = q.textAnswer || "No answer";
+                break;
+            }
+            answersMap.set(q.question._id.toString(), ans);
+          }
 
           const answerRow = [
             attempt.completedAt ? new Date(attempt.completedAt).toLocaleString() : "N/A",
-            ...section.questions.map((q: any) => {
-              switch (q.question.questionType) {
-                case "multiple_choice":
-                case "radio_choice":
-                case "true_false":
-                  return q.selectedOptions?.join(", ") || "No answer";
-                case "fill_in_blank":
-                case "essay":
-                case "short_answer":
-                  return q.textAnswer || "No answer";
-                default:
-                  return "Unknown type";
-              }
-            }),
+            ...allQuestionIds.map((qid) => answersMap.get(qid) || "No answer"),
           ];
           sheet.addRow(answerRow);
         }
 
+        // Auto column width
         sheet.columns.forEach((col) => {
           let maxLength = 10;
           col.eachCell({ includeEmpty: true }, (cell) => {
