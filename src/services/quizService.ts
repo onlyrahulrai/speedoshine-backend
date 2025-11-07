@@ -699,7 +699,7 @@ export async function generateExcelReport(_id: string): Promise<{ path: string }
     await workbook.xlsx.writeFile(filePath);
 
     return {
-      path: `uploads/reports/${fileName}`,
+      path: `uploads/reports/${fileName}`
     };
   } catch (error: any) {
     throw new Error(error.message || "Internal Server Error");
