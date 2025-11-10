@@ -487,7 +487,7 @@ export async function getQuizParticipants(
   }
 }
 
-export async function generateExcelReport(_id?: string): Promise<{ path: string }> {
+export async function generateExcelReport(_id?: string): Promise<{ path?: string }> {
   try {
     // 1. Fetch quiz and attempts
     const quiz = await QuizModel.findOne({ _id });
