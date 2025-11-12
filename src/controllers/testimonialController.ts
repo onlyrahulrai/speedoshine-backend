@@ -44,7 +44,7 @@ export class TestimonialController extends Controller {
     @Request() req?: any,
     @Query() page?: number,
     @Query() limit?: number,
-    @Query() flag: string = "published"
+    @Query() flag?: string = "published"
   ): Promise<TestimonialListResponse> {
     // If the request is for non-published testimonials, require authentication at runtime
     if (flag !== "published") {
