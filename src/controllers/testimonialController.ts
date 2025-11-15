@@ -102,7 +102,7 @@ export class TestimonialController extends Controller {
   @SuccessResponse<SuccessMessageResponse>(200, "Testimonial deleted successfully")
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   @Response<ErrorMessageResponse>(400, "Invalid testimonial id supplied")
-  public async deleteTestimonial(@Path() id: string): Promise<SuccessMessageResponse> {
+  public async deleteTestimonial(@Path() id?: string): Promise<SuccessMessageResponse> {
     await TestimonialService.deleteTestimonial(id);
     return { message: "Testimonial deleted successfully" };
   }
