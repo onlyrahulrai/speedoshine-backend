@@ -46,13 +46,12 @@ export class TestimonialController extends Controller {
     @Query() limit?: number,
     @Query() flag?: string = "published"
   ): Promise<TestimonialListResponse> {
-    // If the request is for non-published testimonials, require authentication at runtime
+    // Conditional auth: only require JWT for non-published testimonials
+    // Published testimonials (default) are publicly accessible
     if (flag !== "published") {
       try {
-        // expressAuthentication will throw if token is missing/invalid
         await expressAuthentication(req as ExpressRequest, "jwt");
       } catch (err) {
-        // rethrow so tsoa/express returns 401 as configured by @Response
         const e: any = new Error("Authentication required");
         e.status = 401;
         throw e;
