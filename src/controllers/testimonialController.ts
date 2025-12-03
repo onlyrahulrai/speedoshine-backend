@@ -32,6 +32,15 @@ import { AuthenticationRequiredResponse } from "../types/schema/Auth";
 @Route("testimonials")
 @Tags("Testimonial")
 export class TestimonialController extends Controller {
+  /**
+   * TestimonialController
+   *
+   * Exposes endpoints for managing testimonials.
+   * - `getTestimonials` is public for `flag=published` (default).
+   * - For any other `flag` value (e.g. `draft`, `private`), the controller
+   *   enforces runtime JWT authentication using `expressAuthentication`.
+   * - Other CRUD endpoints use `@Security("jwt")` and require authentication.
+   */
   /** Get all testimonials with pagination */
   @Get("/")
   @SuccessResponse<TestimonialListResponse>(
