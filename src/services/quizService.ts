@@ -497,6 +497,10 @@ export async function generateExcelReport(_id?: string): Promise<{ path?: string
     let attempts = await QuizAttemptModel.find({ quiz: quiz._id })
       .populate([
         {
+          path: "user",
+          select: "firstName lastName email phone",
+        },
+        {
           path: "quiz",
           select: "_id title description type",
         },
@@ -550,24 +554,29 @@ export async function generateExcelReport(_id?: string): Promise<{ path?: string
       // Collect all unique questions
       const allQuestionsMap = new Map<string, string>();
       for (const attempt of attempts) {
-        for (const q of attempt.questions) {
-          allQuestionsMap.set(q.question._id.toString(), q.question.questionText);
+        for (const q of attempt.questions as any) {
+          allQuestionsMap.set((q.question as any)._id.toString(), (q.question as any).questionText);
         }
       }
 
       const allQuestionIds = Array.from(allQuestionsMap.keys());
       const allQuestionTexts = Array.from(allQuestionsMap.values());
 
-      // Header row
-      const headerRow = ["Timestamp", ...allQuestionTexts];
-      sheet.addRow(headerRow);
+      // Define table columns: Name, Email, Mobile (frozen) + Timestamp + Questions
+      const tableColumns = [
+        { name: "Name", filterButton: true },
+        { name: "Email", filterButton: true },
+        { name: "Mobile", filterButton: true },
+        { name: "Timestamp", filterButton: true },
+        ...allQuestionTexts.map((q) => ({ name: q, filterButton: true })),
+      ];
 
-      // Add answers
-      for (const attempt of attempts) {
+      // Build rows with user data
+      const rows = attempts.map((attempt: any) => {
         const answersMap = new Map<string, string>();
-        for (const q of attempt.questions) {
+        for (const q of attempt.questions as any) {
           let ans = "No answer";
-          switch (q.question.questionType) {
+          switch ((q.question as any).questionType) {
             case "multiple_choice":
             case "radio_choice":
             case "true_false":
@@ -579,24 +588,44 @@ export async function generateExcelReport(_id?: string): Promise<{ path?: string
               ans = q.textAnswer || "No answer";
               break;
           }
-          answersMap.set(q.question._id.toString(), ans);
+          answersMap.set((q.question as any)._id.toString(), ans);
         }
 
-        const answerRow = [
+        return [
+          `${(attempt.user as any)?.firstName || "N/A"} ${(attempt.user as any)?.lastName || "N/A"}`,
+          (attempt.user as any)?.email || "N/A",
+          (attempt.user as any)?.phone || "N/A",
           attempt.completedAt ? new Date(attempt.completedAt).toLocaleString() : "N/A",
           ...allQuestionIds.map((qid) => answersMap.get(qid) || "No answer"),
         ];
-        sheet.addRow(answerRow);
-      }
+      });
+
+      // Add table with frozen columns
+      sheet.addTable({
+        name: "ResponsesTable",
+        ref: "A1",
+        headerRow: true,
+        columns: tableColumns,
+        rows: rows,
+        style: {
+          theme: "TableStyleMedium9",
+          showRowStripes: true,
+        },
+      });
+
+      // Freeze first 3 columns (Name, Email, Mobile) and header row
+      sheet.views = [
+        {
+          state: "frozen",
+          xSplit: 3,
+          ySplit: 1,
+          activeCell: "D2",
+        },
+      ];
 
       // Auto column width
-      sheet.columns.forEach((col) => {
-        let maxLength = 10;
-        col.eachCell({ includeEmpty: true }, (cell) => {
-          const cellLength = (cell.value?.toString().length || 0) + 2;
-          if (cellLength > maxLength) maxLength = cellLength;
-        });
-        col.width = maxLength;
+      sheet.columns.forEach((col, i) => {
+        col.width = i < 3 ? 20 : 25;
       });
     }
 
@@ -606,8 +635,8 @@ export async function generateExcelReport(_id?: string): Promise<{ path?: string
       const allSectionsMap = new Map<string, string>();
       for (const attempt of attempts) {
         for (const sec of attempt.sections || []) {
-          if (sec.section?._id) {
-            allSectionsMap.set(sec.section._id.toString(), sec.section.title);
+          if ((sec.section as any)?._id) {
+            allSectionsMap.set((sec.section as any)._id.toString(), (sec.section as any).title);
           }
         }
       }
@@ -624,34 +653,40 @@ export async function generateExcelReport(_id?: string): Promise<{ path?: string
         // ✅ Collect all unique questions across all attempts in this section
         const allQuestionsMap = new Map<string, string>();
         for (const attempt of attempts) {
-          const section = attempt.sections.find(
-            (s: any) => s.section._id.toString() === sectionId
+          const section = (attempt.sections as any).find(
+            (s: any) => (s.section as any)._id.toString() === sectionId
           );
           if (!section) continue;
 
-          for (const q of section.questions) {
-            allQuestionsMap.set(q.question._id.toString(), q.question.questionText);
+          for (const q of section.questions as any) {
+            allQuestionsMap.set((q.question as any)._id.toString(), (q.question as any).questionText);
           }
         }
 
         const allQuestionIds = Array.from(allQuestionsMap.keys());
         const allQuestionTexts = Array.from(allQuestionsMap.values());
 
-        // Header row → Timestamp + all questions
-        const headerRow = ["Timestamp", ...allQuestionTexts];
-        sheet.addRow(headerRow);
+        // Define table columns: Name, Email, Mobile (frozen) + Timestamp + Questions
+        const tableColumns = [
+          { name: "Name", filterButton: true },
+          { name: "Email", filterButton: true },
+          { name: "Mobile", filterButton: true },
+          { name: "Timestamp", filterButton: true },
+          ...allQuestionTexts.map((q) => ({ name: q, filterButton: true })),
+        ];
 
-        // ✅ Add answers
+        // Build rows with user data
+        const rows: any[] = [];
         for (const attempt of attempts) {
-          const section = attempt.sections.find(
-            (s: any) => s.section._id.toString() === sectionId
+          const section = (attempt.sections as any).find(
+            (s: any) => (s.section as any)._id.toString() === sectionId
           );
           if (!section) continue;
 
           const answersMap = new Map<string, string>();
-          for (const q of section.questions) {
+          for (const q of section.questions as any) {
             let ans = "No answer";
-            switch (q.question.questionType) {
+            switch ((q.question as any).questionType) {
               case "multiple_choice":
               case "radio_choice":
               case "true_false":
@@ -663,24 +698,44 @@ export async function generateExcelReport(_id?: string): Promise<{ path?: string
                 ans = q.textAnswer || "No answer";
                 break;
             }
-            answersMap.set(q.question._id.toString(), ans);
+            answersMap.set((q.question as any)._id.toString(), ans);
           }
 
-          const answerRow = [
+          rows.push([
+            `${(attempt.user as any)?.firstName || "N/A"} ${(attempt.user as any)?.lastName || "N/A"}`,
+            (attempt.user as any)?.email || "N/A",
+            (attempt.user as any)?.phone || "N/A",
             attempt.completedAt ? new Date(attempt.completedAt).toLocaleString() : "N/A",
             ...allQuestionIds.map((qid) => answersMap.get(qid) || "No answer"),
-          ];
-          sheet.addRow(answerRow);
+          ]);
         }
 
-        // Auto column width
-        sheet.columns.forEach((col) => {
-          let maxLength = 10;
-          col.eachCell({ includeEmpty: true }, (cell) => {
-            const cellLength = (cell.value?.toString().length || 0) + 2;
-            if (cellLength > maxLength) maxLength = cellLength;
-          });
-          col.width = maxLength;
+        // Add table with frozen columns
+        sheet.addTable({
+          name: `Table_${sectionId}`,
+          ref: "A1",
+          headerRow: true,
+          columns: tableColumns,
+          rows: rows,
+          style: {
+            theme: "TableStyleMedium9",
+            showRowStripes: true,
+          },
+        });
+
+        // Freeze first 3 columns (Name, Email, Mobile) and header row
+        sheet.views = [
+          {
+            state: "frozen",
+            xSplit: 3,
+            ySplit: 1,
+            activeCell: "D2",
+          },
+        ];
+
+        // Set column widths
+        sheet.columns.forEach((col, i) => {
+          col.width = i < 3 ? 20 : 25;
         });
       }
     }
