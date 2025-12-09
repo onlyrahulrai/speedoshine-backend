@@ -45,6 +45,8 @@ const QuizAttemptSchema = new mongoose.Schema(
       type: String,
     },
 
+    reportContent: { type: String },
+
     startedAt: { type: Date, default: Date.now },
     completedAt: { type: Date },
     timeTaken: { type: Number }, // total time in seconds

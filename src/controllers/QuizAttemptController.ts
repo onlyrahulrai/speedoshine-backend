@@ -101,6 +101,66 @@ export class QuizAttemptController extends Controller {
   }
 
   @Security("jwt")
+  @Post("{attemptId}/reports/save")
+  @SuccessResponse<QuizAttemptResponse>(200, "Quiz attempt Report retrieved")
+  @Response<ErrorMessageResponse>(400, "Invalid attempt id")
+  public async saveGeneratedAttemptReport(
+    @Request() req: any,
+    @Path() attemptId: string,
+    @Body() body: { reports?: string }
+  ): Promise<QuizAttemptResponse> {
+    try {
+      const { reports } = body;
+
+      if (!attemptId) {
+        this.setStatus(400);
+        return { message: "Invalid attempt id" } as any;
+      }
+
+      if (!reports || typeof reports !== "string") {
+        this.setStatus(400);
+        return { message: "Invalid report data" } as any;
+      }
+
+      return await QuizAttemptService.saveGeneratedAttemptReport({
+        reports,
+        attemptId
+      });
+    } catch (error: any) {
+      console.error("Error saving report:", error);
+      this.setStatus(500);
+      return { message: error.message || "Failed to save report" } as any;
+    }
+  }
+
+  @Security("jwt")
+  @Post("{attemptId}/reports")
+  @SuccessResponse<QuizAttemptResponse>(200, "Quiz attempt Report retrieved")
+  @Response<ErrorMessageResponse>(400, "Invalid attempt id")
+  public async generateAttemptReport(
+    @Request() req: any,
+    @Path() attemptId: string,
+  ): Promise<QuizAttemptResponse> {
+    const userId = req.user?._id;
+
+    if (!attemptId || !userId) {
+      this.setStatus(400);
+      return { message: "Invalid attempt id or user" } as any;
+    }
+
+    // Access multipart form data from request
+    const { customPrompt } = req.body;
+
+    const excelFile = req.file; // File uploaded via multer
+
+    return QuizAttemptService.generateAttemptReport({
+      customPrompt,
+      excelFile,
+      attemptId,
+    });
+  }
+
+  @Security("jwt")
   @Get("{attemptId}")
   @SuccessResponse<QuizAttemptResponse>(200, "Quiz attempt retrieved")
   @Response<ErrorMessageResponse>(400, "Invalid attempt id")

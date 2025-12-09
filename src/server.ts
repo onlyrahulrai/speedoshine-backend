@@ -39,6 +39,16 @@ app.use("/api/uploads", express.static(join(__dirname, "../uploads")));
 // Add JSON parsing middleware for TSOA routes
 app.use(express.json());
 
+// Multer middleware for quiz-attempts reports endpoint
+app.post(
+  "/api/quiz-attempts/:attemptId/reports",
+  upload.single("excelFile"),
+  (req: Request, res: Response, next: NextFunction) => {
+    // Attach file to request for TSOA controller to access
+    next();
+  }
+);
+
 const apiRouter = express.Router();
 
 const { RegisterRoutes } = await import("../dist/routes");
