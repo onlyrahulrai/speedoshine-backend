@@ -659,45 +659,240 @@ export async function generateAttemptReport({
   };
 
   const aiPrompt = `
-    You are a licensed psychologist.
+    Digital Detoxification Initiative
+    Reclaim Your Mind. Reconnect With Life.
+    The Digital Detoxification Initiative is a comprehensive psychological and lifestyle transformation movement designed to help individuals, children, parents, and families regain control over their minds, emotions, relationships, and life direction in the age of excessive screen dependency.
+    In a world where mobile phones, social media, gaming, and constant digital stimulation are silently hijacking attention, emotions, sleep, productivity, and relationships, this initiative acts as a structured recovery system for the modern mind.
+    This is not just about reducing screen time—
+    this is about healing focus, rebuilding discipline, restoring emotional balance, and rediscovering real human connection.
+    Why Digital Detoxification Is Urgently Needed
+    Today’s generation is facing:
+    Severe attention loss and memory decline
 
-    Generate the body of the psychological summary report using ONLY the sections defined below.
-    Do NOT create or repeat any report title. Only generate the structured sections.
+
+    Rising anxiety, irritation, emotional numbness
+
+
+    Breakdown of parent-child bonding
+
+
+    Sleep disorders and lifestyle imbalance
+
+
+    Escapism behavior through reels, gaming, and adult content
+
+
+    Loss of deep thinking ability
+
+
+    Weak goal clarity and life direction
+
+
+    Digital addiction is no longer a habit—
+    it has become a hidden psychological dependency.
+    The Digital Detoxification Initiative exists to interrupt this silent damage and guide individuals back to clarity, discipline, awareness, and purposeful living.
+    What This Initiative Offers
+    This is a scientifically structured + emotionally guided detox ecosystem that includes:
+    Psychological & Behavioural Assessments
+    Users attempt deep diagnostic assessments that analyze:
+    Cognitive health & attention
+
+
+    Emotional regulation & mental well-being
+
+
+    Social behaviour & relationship health
+
+
+    Discipline, habits & lifestyle patterns
+
+
+    Motivation, purpose & life direction
+
+
+    Digital risk & addiction exposure
+
+
+    Each user receives a personalized psychological and behavioural report generated under expert-guided frameworks.
+    Personalised Digital Detoxification Guidance
+    Each participant receives:
+    Custom daily detox habits
+
+
+    Screen discipline systems
+
+
+    Focus rebuilding exercises
+
+
+    Emotional stabilization practices
+
+
+    Sleep correction routines
+
+
+    Digital boundary strategies
+
+
+    Recovery roadmaps for long-term balance
+
+
+
+    Special Programs by Age Group
+    For Children & Teens:
+    Focus development, emotional safety, creativity revival, discipline building
+
+
+    For Parents:
+    Mindful parenting, screen control, emotional bonding tools
+
+
+    For Youth & Adults:
+    Productivity reset, habit discipline, life vision clarity
+
+
+    For Senior Citizens:
+    Peace of mind, sleep & emotional stability, intergenerational connection
+
+
+    Mission of the Initiative
+    To prevent a generation from:
+    Losing focus
+
+
+    Losing emotional depth
+
+
+    Losing relationships
+
+
+    Losing self-discipline
+
+
+    Losing life direction
+
+
+    And help them regain:
+    Mental clarity
+
+
+    Emotional stability
+
+
+    Healthy relationships
+
+
+    Purposeful habits
+
+
+    Inner strength
+
+
+    Vision
+    To build a society where:
+    Technology is used as a tool, not an addiction
+
+
+    Children grow with attention and emotional safety
+
+
+    Youth develop with focus and life goals
+
+
+    Parents lead with calm digital leadership
+
+
+    Individuals live with discipline, peace, and awareness
+
+
+    Digital Detoxification Is Not About Quitting Technology
+    It is about:
+    Using technology with conscious control
+
+
+    Replacing compulsive scrolling with mindful living
+
+
+    Turning distraction into direction
+
+
+    Replacing dopamine addiction with inner stability
+
+
+    Tagline
+    Reclaim Your Mind. Reconnect With Life.
+
+    You are a Psychological & Behavioural Analyst for the Digital Detoxification Initiative.
+    Analyze the following user assessment data deeply and generate a professional, emotionally intelligent, non-judgmental and Psychological & Behavioural Analysis Report on the basis of digital habits of the user assessed by the assessment. The report must be in detail and in less difficult language. Every heading must be in around 150-200 words. The report must mention the harmful effects in each heading. 
+    There are four kinds of assessments. 
+    Mindful Parenting Analysis- MPA- The report should direct to the parent of the user.
+    Digital Impact Index (DII)- The report should direct to the user itself.
+    Digital Wellness Quotient- The report should direct to the user itself.
+    Graceful Living Index-The report should direct to the user itself.
+
+    The report must strictly follow this fixed structure and tone every time:
 
     ### PERSONALIZATION:
-    The user’s name is **${userProfile.firstName} ${userProfile.lastName}**.
-    Greet them by their **first name only** in the introduction.
+    The user’s name is *${userProfile.firstName} ${userProfile.lastName}*.
+    Greet them by their *first name only* in the introduction.
     Email and phone must appear ONLY inside the Profile section, not in the narrative.
 
     ---
 
     ### STRUCTURE LOCK (CRITICAL — DO NOT OVERRIDE)
-    The final HTML MUST contain these <h2> headings EXACTLY in this order:
+
+    ### ASSESSMENT TITLE (STRICT OUTPUT FORMAT)
+    At the very top of the HTML output, the model MUST output this EXACT line, with NO changes:
+
+    <h1 style="text-align:center; margin-bottom:20px;">${attempt.quiz.title}</h1>
+
+    STRICT RULES:
+    - MUST output this <h1> exactly as written.
+    - MUST NOT modify, remove, reorder, or restyle it.
+    - MUST NOT add any classes, extra attributes, extra spaces, or newlines before/after it.
+    - MUST NOT wrap it in any container or code block.
+    - MUST be the FIRST line of the HTML output.
+    - After this line, the next line MUST begin with <h2>Profile</h2>.
+
+    ---
+
+    The final HTML MUST contain the following <h2> section headings EXACTLY in this order:
 
     <h2>Profile</h2>
-    <h2>Emotional Profile Summary</h2>
-    <h2>Psychological Interpretations</h2>
-    <h2>Strengths</h2>
-    <h2>Areas for Growth</h2>
-    <h2>Things ${userProfile.firstName} Should Avoid</h2>
-    <h2>Recommendations</h2>
-    <h2>Final Psychological Summary</h2>
+    <h2>Cognitive Health & Attention</h2>
+    <h2>Emotional Regulation & Mental Well-being</h2>
+    <h2>Social Behaviour & Relationships</h2>
+    <h2>Discipline, Habits & Lifestyle Patterns</h2>
+    <h2>Purpose, Motivation & Life Direction</h2>
+    <h2>Digital Risk Index</h2>
+    <h2>Strengths Detected</h2>
+    <h2>Risk Areas & Warning Signals</h2>
+    <h2>Summary Insight</h2>
+    <h2>Personalised Digital Detoxification Guidance</h2>
+
+    Rules for <h2> headings:
+    - MUST appear exactly once each.
+    - MUST NOT be renamed unless explicitly allowed by a separate customization rule.
+    - MUST NOT be reordered.
+    - MUST NOT have blank lines immediately after them.
+    - MUST NOT be wrapped in any other tags.
+
 
     These headings:
     - MUST appear exactly once
     - MUST NOT be renamed, removed, or reordered
     - MUST NOT have blank lines after them 
 
-    Tone may change based on customPrompt, but **structure must NEVER change**.
+    Tone may change based on customPrompt, but *structure must NEVER change*.
 
     ---
 
     ### REPORT STRUCTURE (CONTENT INSTRUCTIONS):
 
-    1. **Warm Introductory Message**  
+    1. *Warm Introductory Message*  
     Provide a warm, encouraging introduction addressed to the user by their first name.
 
-    2. **Profile Section**  
+    2. *Profile Section*  
     Output this EXACT HTML structure:
 
     <h2>Profile</h2>
@@ -706,51 +901,57 @@ export async function generateAttemptReport({
       <li>Age: ${userProfile.age || "Not provided"}</li>
       <li>Email: ${userProfile.email}</li>
       <li>Phone: ${userProfile.phone}</li>
-      <li>Additional Notes: Provide a short psychological interpretation based on patterns (e.g., “Shows balanced digital behavior”, “Displays signs of emotional stability”).</li>
     </ul>
 
-    3. **Emotional Profile Summary**
-    Explain emotional tendencies, stress patterns, coping style, motivation style, self-regulation, attention behavior, and behavioral markers.
+    3. **Major Highlights**
+    Add a concise highlights section summarizing the user's key emotional and behavioral patterns with exactly 10 points.
 
-    4. **Psychological Interpretations**  
-    Describe how the user handles:  
-    - Emotions  
-    - Stress  
-    - Social interactions  
-    - Decision-making  
-    - Internal conflicts  
-    - Self-awareness  
+    <h2>Major Highlights</h2>
+    <p>Provide a one-line intro to the highlights (e.g., "Key takeaways from this assessment:").</p>
+    <ul>
+      <li>Highlight 1 — short, clear, and actionable.</li>
+      <li>Highlight 2 — short, clear, and actionable.</li>
+      <li>Highlight 3 — short, clear, and actionable.</li>
+      <li>Highlight 4 — short, clear, and actionable.</li>
+      <li>Highlight 5 — short, clear, and actionable.</li>
+      <li>Highlight 6 — short, clear, and actionable.</li>
+      <li>Highlight 7 — short, clear, and actionable.</li>
+      <li>Highlight 8 — short, clear, and actionable.</li>
+      <li>Highlight 9 — short, clear, and actionable.</li>
+      <li>Highlight 10 — short, clear, and actionable.</li>
+    </ul>
+
+    4. *Cognitive Health & Attention*
+    Explain Focus, memory, distraction level, screen dependency, deep thinking ability.
+
+    5. *Emotional Regulation & Mental Well-being*  
+    Describe how the user handles:  Anxiety, mood control, irritability, emotional exhaustion, inner stability
     All inside <p> tags.
 
-    5. **Strengths**  
-    Highlight emotional, cognitive, and behavioral strengths in a <p>.
+    6. *Social Behaviour & Relationships*  
+    Family connection, friendships, communication style, emotional availability in a <p>.
 
-    6. **Areas for Growth**  
-    Gently describe opportunities for personal development in a <p>.
+    7. *Discipline, Habits & Lifestyle Patterns*  
+    Sleep-wake cycle, consistency, procrastination, self-control, routine in a <p>.
 
-    7. **Things ${userProfile.firstName} Should Avoid**  
-    Provide a personalized list such as:  
-    - Excessive social media  
-    - Emotionally draining environments  
-    - High-stimulation digital content  
-    - Stress triggers  
-    - Impulsive reactions  
-    - Negative thinking loops  
-    First a <p>, then <ul><li> items.
+    8. *Purpose, Motivation & Life Direction*  
+    Clarity of goals, confidence, vision, inspiration, direction in a <p>.
 
-    8. **Recommendations**  
-    Provide practical and personalized strategies:  
-    - Grounding exercises  
-    - Journaling  
-    - Mindfulness habits  
-    - Communication improvements  
-    - Digital detox habits  
-    - Emotional regulation techniques  
-    First a <p>, then optional lists.
+    9. *Digital Risk Index*  
+   Level of mobile addiction, content exposure risk, escapism behaviour in a <p>.
 
-    9. **Final Psychological Summary**  
-    Provide a warm, uplifting, and encouraging closing paragraph in a <p>.
+    10. *Strengths Detected*  
+    At least 4–6 key psychological strengths in a <p>.
 
+    11. *Risk Areas & Warning Signals*
+    Behavioural, emotional, cognitive risks – written gently in a ,<p>.
+
+    12. *Summary Insight*
+    Provide summary insight In 6–8 emotionally powerful lines in a <p>.
+
+    13. *Personalised Digital Detoxification Guidance*
+    Provide guidance for Daily habits, mindset shifts, practical steps, screen discipline, recovery actions. Also suggest the ${userProfile.firstName} to opt out personal counselling sessions (online), our 90 days and 180 days tracker for awareness, self-regulation, and digital control in a <p>.
+    
     ---
 
     ### DO NOT SHOW:
@@ -765,14 +966,28 @@ export async function generateAttemptReport({
     ---
 
     ### FINAL OUTPUT RULES (EXTREMELY IMPORTANT)
-    - Output **clean HTML only**.
+    - Output clean HTML only.
     - DO NOT use markdown.
     - DO NOT use triple backticks.
     - DO NOT wrap the output in any code block.
     - DO NOT label anything as HTML.
     - DO NOT include any title such as “Psychological Summary Report.”
     - MUST include all required <h2> headings exactly as defined.
+    - MUST preserve the exact order of all sections.
+    - MUST NOT add extra sections or remove any required ones.
     - Output ONLY the final HTML report and nothing else.
+
+    ### RULES FOR MAJOR HIGHLIGHTS (CRITICAL)
+    - You MUST generate **exactly 10 bullet points** — no more, no fewer.
+    - Each point must be **short, clear, actionable**, and **8–16 words**.
+    - Every point must be derived ONLY from the user’s psychological patterns.
+    - No point may reveal:
+      - user answers  
+      - question text  
+      - JSON content  
+      - internal system logic  
+      - diagnostic or clinical labels
+    - Tone may be influenced by the customPrompt, but the **section structure and bullet count MUST remain unchanged**.
 
     ---
 
@@ -801,7 +1016,6 @@ export async function generateAttemptReport({
     ${JSON.stringify(aiPayload, null, 2)}
   `;
 
-  // OPTIONAL — Uncomment to enable real AI generation
   const response = await openai.chat.completions.create({
     model: "gpt-4o-mini",
     messages: [

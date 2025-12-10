@@ -11,7 +11,7 @@ import { v4 as uuidV4 } from "uuid";
 const myQueue = new Queue("DD-EmailTask");
 
 export const registerUser = async (data: RegisterInput) => {
-  const { firstName, lastName, email, age, password } = data;
+  const { firstName, lastName, email, occupation, organization,  age,  password } = data;
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -28,6 +28,8 @@ export const registerUser = async (data: RegisterInput) => {
       firstName,
       lastName,
       email,
+      occupation,
+      organization,
       age,
       password: hashedPassword,
       role: role._id,

@@ -10,6 +10,8 @@ export interface RegisterInput {
   lastName?: any;
   email?: any;
   age?: any;
+  occupation?: any;
+  organization?: any;
   password?: any;
   confirmPassword?: any;
 }

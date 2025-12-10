@@ -8,6 +8,8 @@ export interface IUser extends Document {
   email?: string;
   phone?: string;
   age?: number;
+  occupation?:string;
+  organization?:string;
   address?: string;
   profile?: string;
   password?: string;
@@ -22,6 +24,8 @@ const UserSchema: Schema = new Schema(
   {
     firstName: { type: String },
     lastName: { type: String },
+    occupation: { type: String },
+    organization: { type: String },
     username: { type: String },
     email: { type: String },
     phone: {
