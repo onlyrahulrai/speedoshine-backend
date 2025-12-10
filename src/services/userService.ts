@@ -25,6 +25,7 @@ export const getAllUsers = async (
   // fetch paginated users
   const results = await User.find()
     .select("-password")
+    .sort("-createdAt")
     .skip(skip)
     .limit(effectiveLimit)
     .lean();
