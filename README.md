@@ -111,6 +111,52 @@ http://localhost:5000/docs
 - Push to your branch
 - Open a pull request
 
+**📦 Install System Dependencies**
+
+```
+sudo apt install -y \
+  libatk1.0-0t64 \
+  libatk-bridge2.0-0t64 \
+  libx11-xcb1 \
+  libxcomposite1 \
+  libxdamage1 \
+  libxfixes3 \
+  libxrandr2 \
+  libgbm1 \
+  libdrm2 \
+  libxkbcommon0 \
+  libasound2t64 \
+  libcups2t64 \
+  libnss3 \
+  libxshmfence1 \
+  libpango-1.0-0 \
+  libpangocairo-1.0-0 \
+  libatspi2.0-0t64 \
+  libgtk-3-0t64 \
+  fonts-liberation \
+  ca-certificates
+```
+
+**🌐 Install Chromium**
+
+```
+sudo apt install -y chromium
+```
+
+**Verify installation:**
+
+```
+which chromium
+```
+
+Expected output:
+
+```
+/usr/bin/chromium
+```
+
+Run once on your Ubuntu VPS or local Ubuntu machine:
+
 ### **💡 Author**
 **Rahul Rai**
 Passionate about building scalable backend systems and clean APIs.
@@ -120,4 +166,3 @@ Passionate about building scalable backend systems and clean APIs.
 If you want, I can also make a **version with emojis for section titles** and **badges for Node.js, MongoDB, Redis, etc.** so the README looks more attractive for GitHub.  
 Do you want me to make that upgraded visual version?
 ```
-

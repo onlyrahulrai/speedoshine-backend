@@ -37,7 +37,9 @@ export async function getAllQuizzes({
   const skip = (page - 1) * limit;
 
   // Build query object
-  const match: any = {};
+  const match: any = {
+    isDeleted: false
+  };
 
   if (category && category !== "all") {
     match.category = category;
@@ -366,7 +368,7 @@ export async function updateQuiz(id: string, data: any) {
 }
 
 export async function deleteQuiz(id: string) {
-  await QuizModel.findByIdAndDelete(id);
+  await QuizModel.findByIdAndUpdate(id, { isDeleted: true });
 }
 
 // Get quiz attempts for a quiz, optionally filtered by userId
