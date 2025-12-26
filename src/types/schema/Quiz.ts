@@ -59,6 +59,7 @@ export interface QuizRequest {
   questions?: Question[];
   sections?: Section[];
   isActive?: boolean;
+  isDeleted?: boolean;
   createdBy?: string; // user id
 }
 
