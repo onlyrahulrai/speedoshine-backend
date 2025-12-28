@@ -26,7 +26,7 @@ interface ParticipantFilters extends PaginationParams {
   search?: string;
 }
 
-export async function getAllQuizzes({
+export async function getAllQuizzes(userInfo: any, {
   page = 1,
   limit = 10,
   category,
@@ -40,6 +40,10 @@ export async function getAllQuizzes({
   const match: any = {
     isDeleted: false
   };
+
+  if (userInfo?.role?.name !== "Admin") {
+    match.visibility = { $in: ["public"] };
+  }
 
   if (category && category !== "all") {
     match.category = category;
