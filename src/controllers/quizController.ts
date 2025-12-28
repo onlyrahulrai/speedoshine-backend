@@ -12,6 +12,7 @@ import {
   Security,
   SuccessResponse,
   Response,
+  Request,
 } from "tsoa";
 
 import * as QuizService from "../services/quizService";
@@ -48,11 +49,14 @@ export class QuizController extends Controller {
     @Query() page?: number,
     @Query() limit?: number,
     @Query() search?: string,
+    @Request() req?: any
   ): Promise<QuizListResponse> {
     // Convert comma-separated tags string to array if provided
     const tagsArray = tags ? tags.split(",").map((t) => t.trim()) : undefined;
 
-    return await QuizService.getAllQuizzes({
+    const userInfo = req?.user || null;
+
+    return await QuizService.getAllQuizzes(userInfo, {
       category,
       difficulty,
       tags: tagsArray,
@@ -74,7 +78,7 @@ export class QuizController extends Controller {
  * Get the Excel report for a specific quiz
  */
   @Get("{id}/report/excel")
-  @SuccessResponse<{path?: string}>(200, "Quiz report retrieved successfully")
+  @SuccessResponse<{ path?: string }>(200, "Quiz report retrieved successfully")
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   @Response<ErrorMessageResponse>(400, "Invalid quiz id supplied")
   public async getQuizReportExcel(

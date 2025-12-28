@@ -12,6 +12,7 @@ import swaggerDocument from "../dist/swagger.json" assert { type: "json" };
 import "./workers";
 import "./helper/utils/promiseAny";
 import { expressAuthentication } from "./auth/expressAuthentication";
+import optionalAuth from "./middleware/optionalAuth";
 import { fileURLToPath } from "url";
 import { dirname, join } from "path";
 // @ts-ignore
@@ -32,6 +33,9 @@ initSocket(server);
 const PORT = process.env.PORT || 5500;
 
 app.use(cors());
+
+// Optional authentication middleware: attach `req.user` when a valid JWT is present
+app.use(optionalAuth);
 
 // Serve static files from public directory
 app.use("/api/uploads", express.static(join(__dirname, "../uploads")));
