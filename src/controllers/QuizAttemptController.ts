@@ -51,7 +51,8 @@ export class QuizAttemptController extends Controller {
   @Response<ErrorMessageResponse>(400, "Invalid quiz id or user")
   public async startAttempt(
     @Request() req: any,
-    @Path() quizId: string
+    @Path() quizId: string,
+    @Body() body?: { licenseKey?: string },
   ): Promise<QuizAttemptResponse> {
     const userId = req.user?._id;
 
@@ -60,7 +61,7 @@ export class QuizAttemptController extends Controller {
       return { message: "Invalid quiz id or user" } as any;
     }
 
-    return QuizAttemptService.startAttempt(quizId, userId);
+    return QuizAttemptService.startAttempt(quizId, userId, body?.licenseKey);
   }
 
   @Security("jwt")

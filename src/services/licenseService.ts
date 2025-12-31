@@ -1,5 +1,6 @@
 import LicenseKey, { ILicenseKey } from "../models/LicenseKey";
 import { Types } from "mongoose";
+import { ErrorMessageResponse, FieldValidationError } from "../types/schema/Common";
 
 interface PaginatedResponse<T> {
   page: number;
@@ -100,11 +101,17 @@ export const createLicense = async (
 export const updateLicense = async (
   id: string,
   data: Partial<ILicenseKey>
-): Promise<Partial<ILicenseKey> | null> => {
+): Promise<
+  | Partial<ILicenseKey>
+  | FieldValidationError
+  | ErrorMessageResponse
+  | null
+> => {
   if (!Types.ObjectId.isValid(id)) return null;
 
   return await LicenseKey.findByIdAndUpdate(id, data, {
     new: true,
+    runValidators: true,
   })
     .select("-__v")
     .lean();
@@ -124,3 +131,43 @@ export const deleteLicense = async (
     { new: true }
   ).lean();
 };
+
+export const validateLicense = async (
+  data: Partial<ILicenseKey>
+): Promise<Partial<ILicenseKey> | null> => {
+  const license = await LicenseKey.findOne({
+    code: data.code,
+    isDeleted: false,
+    isActive: true,
+  }).select("-__v")
+    .lean();
+
+  if (!license) {
+    throw new Error("This license key is either inactive or could not be found.\nPlease reach out to our management team for verification or support.\nWe’ll get back to you within 24 hours.");
+  }
+
+  if (license.expiresAt && license.expiresAt < new Date()) {
+    throw new Error("Your license has expired.\nPlease reach out to our management team for assistance.");
+  }
+
+  if (license.hasUsageLimit) {
+    const usageLimit = typeof license.usageLimit === "string"
+      ? parseInt(license.usageLimit)
+      : license.usageLimit || 0;
+
+    if ((license.usedCount || 0) >= usageLimit) {
+      throw new Error("Your license has reached its maximum usage limit.\nPlease contact our management team for further assistance.");
+    }
+  } 
+
+  if(license.scope === "ASSESSMENT" && data.assessment) {
+    if (!license.assessment || license.assessment.toString() !== data.assessment.toString()) {
+      throw new Error("This license is not valid for the specified assessment.\nPlease contact our management team for assistance.");
+    }
+  }
+
+  return {
+    code: license.code,
+    name: license.name,
+  }
+}

@@ -39,3 +39,8 @@ export interface LicenseListResponse {
   has_prev: boolean;
   results: LicenseResponse[];
 }
+
+export interface ValidateLicenseRequest {
+  code: string;
+  assessment?: string;
+}

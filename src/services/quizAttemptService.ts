@@ -1,5 +1,6 @@
 import QuizAttemptModel from "../models/QuizAttempt";
 import QuizModel from "../models/Quiz";
+import LicenseKeyModel from "../models/LicenseKey";
 import UserQuestionModel from "../models/UserQuestion";
 import {
   QuizAttemptResponse,
@@ -29,7 +30,7 @@ interface SaveAnswerParams {
   textAnswer?: string;
 }
 
-export async function startAttempt(quizId: string, userId: string) {
+export async function startAttempt(quizId: string, userId: string, assessmentLicenseCode?: string): Promise<QuizAttemptResponse> {
   const quiz = await QuizModel.findById(quizId)
     .populate([
       {
@@ -74,6 +75,19 @@ export async function startAttempt(quizId: string, userId: string) {
 
   if (!attempt) {
     // create new attempt
+    let licenseKey = null;
+
+    if (assessmentLicenseCode) {
+      // validate license key 
+      const licenseKeyInstance = await LicenseKeyModel.findOne({ code: assessmentLicenseCode, isActive: true, isDeleted: false });
+      
+      if (!licenseKeyInstance) {
+        throw new Error("Invalid license key");
+      }
+
+      licenseKey = licenseKeyInstance._id;
+    }
+
     attempt = await new QuizAttemptModel({
       quiz: quizId,
       user: userId,
@@ -86,7 +100,8 @@ export async function startAttempt(quizId: string, userId: string) {
       startedAt: new Date(),
       status: "in_progress",
       sections: [],
-      questions: []
+      questions: [],
+      licenseKey: licenseKey,
     }).save();
 
     // ---------- Standard Quiz ----------

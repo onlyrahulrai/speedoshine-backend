@@ -56,6 +56,10 @@ const QuizAttemptSchema = new mongoose.Schema(
       enum: ["in_progress", "completed"],
       default: "in_progress",
     },
+
+    licenseKey:{
+      type: mongoose.Schema.Types.ObjectId, ref: "LicenseKey", 
+    }
   },
   { timestamps: true }
 );

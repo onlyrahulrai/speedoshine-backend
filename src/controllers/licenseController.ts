@@ -23,6 +23,7 @@ import {
   LicenseListResponse,
   LicenseRequest,
   LicenseResponse,
+  ValidateLicenseRequest
 } from "../types/schema/License";
 
 import {
@@ -85,6 +86,23 @@ export class LicenseController extends Controller {
     return await LicenseService.getLicenseById(id) as LicenseResponse | null;
   }
 
+  /** validate exiting license */
+  @Security("jwt")
+  @Post("/validate")
+  @SuccessResponse<LicenseResponse>(201, "License created successfully")
+  @Response<FieldValidationError>(422, "Validation error")
+  @Response<ErrorMessageResponse>(400, "Invalid request parameters")
+  public async validateLicense(
+    @Body() body: ValidateLicenseRequest
+  ): Promise<LicenseResponse> {
+    const licenseData = {
+      ...body,
+      assessment: body.assessment ? new Types.ObjectId(body.assessment) : undefined,
+    };
+
+    return await LicenseService.validateLicense(licenseData) as LicenseResponse;
+  }
+
   /** Create new license */
   @Security("jwt")
   @Post("/")
@@ -98,7 +116,37 @@ export class LicenseController extends Controller {
       ...body,
       assessment: body.assessment ? new Types.ObjectId(body.assessment) : undefined,
     };
-    return await LicenseService.createLicense(licenseData) as LicenseResponse;
+
+    try {
+      return await LicenseService.createLicense(licenseData) as LicenseResponse;
+    } catch (error: any) {
+      let status = 400;
+      let errors = {}
+
+      // ✅ Duplicate key error (E11000)
+      if (error?.code === 11000) {
+        const field = Object.keys(error.keyPattern || {})[0] || "field";
+
+        status = 422;
+
+        errors = {
+          type: "fields",
+          errors: {
+            [field]: `This ${field} is already in use.`,
+          },
+        };
+      } else {
+        errors = {
+          type: "error",
+          message: error?.message || "Something went wrong while updating license",
+        } as ErrorMessageResponse
+      }
+
+      this.setStatus(status);
+
+      // ✅ Fallback error
+      return errors as LicenseResponse;
+    }
   }
 
   /** Update existing license */
@@ -116,7 +164,37 @@ export class LicenseController extends Controller {
       ...body,
       assessment: body.assessment ? new Types.ObjectId(body.assessment) : null,
     };
-    return await LicenseService.updateLicense(id, licenseData) as LicenseResponse;
+
+    try {
+      return await LicenseService.updateLicense(id, licenseData) as LicenseResponse;
+    } catch (error: any) {
+      let status = 400;
+      let errors = {}
+
+      // ✅ Duplicate key error (E11000)
+      if (error?.code === 11000) {
+        const field = Object.keys(error.keyPattern || {})[0] || "field";
+
+        status = 422;
+
+        errors = {
+          type: "fields",
+          errors: {
+            [field]: `This ${field} is already in use.`,
+          },
+        };
+      } else {
+        errors = {
+          type: "error",
+          message: error?.message || "Something went wrong while updating license",
+        } as ErrorMessageResponse
+      }
+
+      this.setStatus(status);
+
+      // ✅ Fallback error
+      return errors as LicenseResponse;
+    }
   }
 
   /** Delete license (soft delete) */
