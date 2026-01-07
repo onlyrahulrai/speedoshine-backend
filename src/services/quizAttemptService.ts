@@ -85,6 +85,10 @@ export async function startAttempt(quizId: string, userId: string, assessmentLic
         throw new Error("Invalid license key");
       }
 
+      licenseKeyInstance.usedCount += 1;
+
+      await licenseKeyInstance.save();
+
       licenseKey = licenseKeyInstance._id;
     }
 
