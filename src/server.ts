@@ -41,7 +41,7 @@ app.use(optionalAuth);
 app.use("/api/uploads", express.static(join(__dirname, "../uploads")));
 
 // Add JSON parsing middleware for TSOA routes
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
 // Multer middleware for quiz-attempts reports endpoint
 app.post(
