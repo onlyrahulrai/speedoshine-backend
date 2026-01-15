@@ -170,6 +170,7 @@ export class QuizAttemptController extends Controller {
     @Path() attemptId: string,
     @Query() page?: number,
     @Query() limit?: number,
+    @Query() section?: number,
   ): Promise<QuizAttemptResponse> {
     const userId = req.user?._id;
 
@@ -178,7 +179,7 @@ export class QuizAttemptController extends Controller {
       return { message: "Invalid attempt id or user" } as any;
     }
 
-    return QuizAttemptService.getAttemptQuestions(attemptId, userId, page, limit);
+    return QuizAttemptService.getAttemptQuestions(attemptId, userId, page, limit, section);
   }
 
   @Security("jwt")
