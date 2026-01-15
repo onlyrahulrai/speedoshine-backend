@@ -212,7 +212,8 @@ export async function getAttemptQuestions(
   attemptId: string,
   userId: string,
   page?: number,
-  limit: number = 1
+  limit: number = 1,
+  currentSectionIndex?: number,
 ): Promise<QuestionResponse> {
   const attempt = await QuizAttemptModel.findById(attemptId)
     .populate([
@@ -249,7 +250,7 @@ export async function getAttemptQuestions(
 
   if (attempt.status === "completed") throw new Error("Quiz already completed");
 
-  let sectionIndex = attempt.currentSectionIndex ?? 0;
+  let sectionIndex = currentSectionIndex !== undefined ? currentSectionIndex : (attempt.currentSectionIndex ?? 0);
   let questionIndex = attempt.currentQuestionIndex ?? 0;
 
   let currentSection = attempt.quiz?.type === "multi-section" ? attempt.sections?.[sectionIndex] : null;
@@ -320,6 +321,7 @@ export async function getAttemptQuestions(
         end < questionsList.length ||
         (currentSection && sectionIndex + 1 < (attempt.sections?.length || 0)),
       has_prev: effectivePage > 1 || questionIndex > 0,
+      section: currentSection ? sectionIndex : null,
     },
     ...(currentSection ? { section: currentSection.section } : {}),
     questions: paginatedQuestions,
