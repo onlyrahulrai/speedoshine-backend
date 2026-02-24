@@ -3,7 +3,6 @@ import { Types } from "mongoose";
 import { LeaderboardResponse, QuizStatsResponse } from "../types/schema/Analytics";
 import { QuizAttemptListResponse, QuizAttemptResponse } from "../types/schema/QuizAttempt";
 import QuizAttempt from "../models/QuizAttempt";
-import Quiz from "../models/Quiz";
 
 export async function getAttemptById(
   attemptId: string,
@@ -176,8 +175,6 @@ export async function getQuizStatistics(
         );
         break;
     }
-
-    console.log("Quiz Stats Pipeline:", JSON.stringify(pipeline, null, 2));
 
     const stats = await QuizAttempt.aggregate(pipeline).exec();
 

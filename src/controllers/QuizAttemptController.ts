@@ -17,6 +17,7 @@ import {
 import * as QuizAttemptService from "../services/quizAttemptService";
 import {
   QuizAttemptResponse,
+  QuizAttemptStart,
 } from "../types/schema/QuizAttempt";
 
 import { ErrorMessageResponse } from "../types/schema/Common";
@@ -52,7 +53,7 @@ export class QuizAttemptController extends Controller {
   public async startAttempt(
     @Request() req: any,
     @Path() quizId: string,
-    @Body() body?: { licenseKey?: string },
+    @Body() body?: QuizAttemptStart,
   ): Promise<QuizAttemptResponse> {
     const userId = req.user?._id;
 
@@ -61,7 +62,7 @@ export class QuizAttemptController extends Controller {
       return { message: "Invalid quiz id or user" } as any;
     }
 
-    return QuizAttemptService.startAttempt(quizId, userId, body?.licenseKey);
+    return QuizAttemptService.startAttempt(quizId, userId, body);
   }
 
   @Security("jwt")

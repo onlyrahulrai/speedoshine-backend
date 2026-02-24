@@ -32,3 +32,15 @@ export interface QuizAttemptListResponse {
   page: number;
   limit: number;
 }
+
+export interface QuizAttemptStart {
+  code?: string;
+  accessMethod: "LICENSE" | "PAYMENT";
+  assessmentFor?: string; // e.g., "self", "employee", "team"
+  subjectProfile?: {
+    name?: string;
+    age?: string;
+    gender?: string;
+    parentType?: string; // e.g., "Mother", "Father", "Guardian"
+  } | null;
+}

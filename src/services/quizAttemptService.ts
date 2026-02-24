@@ -5,6 +5,7 @@ import UserQuestionModel from "../models/UserQuestion";
 import PromptModel from "../models/Prompt";
 import {
   QuizAttemptResponse,
+  QuizAttemptStart,
 } from "../types/schema/QuizAttempt";
 import { QuestionResponse } from "../types/schema/Question";
 import { QuizAttemptListResponse } from "../types/schema/QuizAttempt";
@@ -31,7 +32,9 @@ interface SaveAnswerParams {
   textAnswer?: string;
 }
 
-export async function startAttempt(quizId: string, userId: string, assessmentLicenseCode?: string): Promise<QuizAttemptResponse> {
+export async function startAttempt(quizId: string, userId: string, body: QuizAttemptStart): Promise<QuizAttemptResponse> {
+  const { code, accessMethod, assessmentFor, subjectProfile } = body;
+
   const quiz = await QuizModel.findById(quizId)
     .populate([
       {
@@ -78,9 +81,9 @@ export async function startAttempt(quizId: string, userId: string, assessmentLic
     // create new attempt
     let licenseKey = null;
 
-    if (assessmentLicenseCode) {
+    if (code) {
       // validate license key 
-      const licenseKeyInstance = await LicenseKeyModel.findOne({ code: assessmentLicenseCode, isActive: true, isDeleted: false });
+      const licenseKeyInstance = await LicenseKeyModel.findOne({ code, isActive: true, isDeleted: false });
 
       if (!licenseKeyInstance) {
         throw new Error("Invalid license key");
@@ -107,6 +110,9 @@ export async function startAttempt(quizId: string, userId: string, assessmentLic
       sections: [],
       questions: [],
       licenseKey: licenseKey,
+      assessmentFor,
+      subjectProfile,
+      accessMethod
     }).save();
 
     // ---------- Standard Quiz ----------
@@ -724,6 +730,8 @@ export async function generateAttemptReport({
     selectedPromptId,
     customPrompt,
   });
+
+  // console.log("AI Prompt:\n", aiPrompt);
 
   /* Optional: log only in dev */
   const response = await openai.chat.completions.create({

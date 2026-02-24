@@ -57,8 +57,40 @@ const QuizAttemptSchema = new mongoose.Schema(
       default: "in_progress",
     },
 
-    licenseKey:{
-      type: mongoose.Schema.Types.ObjectId, ref: "LicenseKey", 
+    licenseKey: {
+      type: mongoose.Schema.Types.ObjectId, ref: "LicenseKey",
+    },
+
+    assessmentFor: {
+      type: String,
+      enum: [
+        "Myself",
+        "My Child",
+        "My Parent",
+        "My Spouse",
+        "My Friend",
+        "Someone Else"
+      ],
+      required: true
+    },
+    
+    accessMethod: {
+      type: String,
+      enum: ["LICENSE", "PAYMENT"],
+      required: true
+    },
+
+    subjectProfile: {
+      name: String,
+      age: String,
+      parentType: {
+        type: String,
+        enum: ["Mother", "Father"]
+      },
+      gender: {
+        type: String,
+        enum: ["Male", "Female", "Other"]
+      }
     }
   },
   { timestamps: true }
