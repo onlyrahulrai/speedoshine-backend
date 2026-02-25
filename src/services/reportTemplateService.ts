@@ -5,20 +5,13 @@ import { Types } from "mongoose";
 import {
   ErrorMessageResponse,
   FieldValidationError,
+  PaginatedResponse,
 } from "../types/schema/Common";
 
 /* =========================================
    PAGINATED RESPONSE INTERFACE
 ========================================= */
 
-interface PaginatedResponse<T> {
-  page: number;
-  limit: number;
-  has_next: boolean;
-  has_prev: boolean;
-  total: number;
-  results: Partial<T>[];
-}
 
 /* =========================================
    GET ALL REPORT TEMPLATES

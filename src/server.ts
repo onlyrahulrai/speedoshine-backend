@@ -34,16 +34,34 @@ const PORT = process.env.PORT || 5500;
 
 app.use(cors());
 
-// Optional authentication middleware: attach `req.user` when a valid JWT is present
+/* =====================================================
+   1. WEBHOOK RAW BODY (MUST BE FIRST)
+   ===================================================== */
+
+app.use(
+  "/api/webhooks",
+  express.raw({ type: "application/json" })
+);
+
+/* =====================================================
+   2. OPTIONAL AUTH
+   ===================================================== */
 app.use(optionalAuth);
 
-// Serve static files from public directory
+/* =====================================================
+   3. STATIC FILES
+   ===================================================== */
 app.use("/api/uploads", express.static(join(__dirname, "../uploads")));
 
-// Add JSON parsing middleware for TSOA routes
+/* =====================================================
+   4. JSON PARSER (AFTER RAW)
+   ===================================================== */
 app.use(express.json({ limit: "1mb" }));
+app.use(express.urlencoded({ extended: true }));
 
-// Multer middleware for quiz-attempts reports endpoint
+/* =====================================================
+   5. FILE UPLOAD ROUTES
+   ===================================================== */
 app.post(
   "/api/quiz-attempts/:attemptId/reports",
   upload.single("excelFile"),
@@ -52,14 +70,6 @@ app.post(
     next();
   }
 );
-
-const apiRouter = express.Router();
-
-const { RegisterRoutes } = await import("../dist/routes");
-
-RegisterRoutes(apiRouter);
-
-app.use("/api", apiRouter);
 
 app.post(
   "/api/upload/single",
@@ -85,15 +95,29 @@ app.post(
     if (!files?.length)
       return res.status(400).json({ message: "No files uploaded" });
 
-    return  res.json({
-    count: files.length,
-    files: files.map((f) => formatFile(f, `${req.protocol}://${req.get("host")}`)),
-  });
+    return res.json({
+      count: files.length,
+      files: files.map((f) => formatFile(f, `${req.protocol}://${req.get("host")}`)),
+    });
 
   }
 );
 
-// Multer middleware will be applied in the controller
+
+/* =====================================================
+   6. TSOA ROUTES
+   ===================================================== */
+const apiRouter = express.Router();
+
+const { RegisterRoutes } = await import("../dist/routes");
+
+RegisterRoutes(apiRouter);
+
+app.use("/api", apiRouter);
+
+/* =====================================================
+   7. SWAGGER
+   ===================================================== */
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
 
 app.get("/", async (req, res) => {
