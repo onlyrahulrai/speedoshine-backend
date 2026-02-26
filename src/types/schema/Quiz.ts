@@ -10,12 +10,12 @@ export interface Question {
   _id?: string;
   questionText: string;
   questionType:
-    | "multiple_choice"
-    | "true_false"
-    | "essay"
-    | "short_answer"
-    | "fill_blank"
-    | "radio_choice";
+  | "multiple_choice"
+  | "true_false"
+  | "essay"
+  | "short_answer"
+  | "fill_blank"
+  | "radio_choice";
   options?: Option[];
   media?: {
     image?: string;
@@ -70,7 +70,7 @@ export interface QuizResponse extends QuizRequest {
   updatedAt?: string;
 }
 
-export interface QuizUpdateRequest extends Partial<QuizResponse> {}
+export interface QuizUpdateRequest extends Partial<QuizResponse> { }
 
 // List response for multiple quizzes
 export interface QuizListResponse {
@@ -113,4 +113,24 @@ export interface QuizAttemptListResponse {
   total: number;
   page: number;
   limit: number;
+}
+
+export interface QuizAccessResponse {
+  user: string;
+  assessment: string;
+
+  accessMethod: string;
+
+  licenseKey?: string;
+  transaction?: string;
+
+  stage: string;
+
+  attempt?: string;
+
+  grantedAt: Date;
+  isConsumed: boolean; // true after attempt created
+
+  createdAt: Date;
+  updatedAt: Date;
 }

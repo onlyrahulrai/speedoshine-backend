@@ -7,7 +7,7 @@ export enum AccessMethod {
 
 export enum AccessStage {
     ACCESS_GRANTED = "access_granted",
-    SUBJECT_PENDING = "subject_pending",
+    SUBJECT_FILLED = "subject_filled",
     ATTEMPT_CREATED = "attempt_created",
     COMPLETED = "completed",
 }

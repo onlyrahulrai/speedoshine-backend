@@ -21,6 +21,7 @@ import {
 import * as TransactionService from "../services/transactionService";
 import { PaginatedResponse } from "../types/schema/Common";
 import { Types } from "mongoose";
+import { TransactionStatus } from "../models/Transaction";
 
 @Route("transactions")
 @Tags("Transactions")
@@ -54,6 +55,7 @@ export class TransactionController extends Controller {
 
             if (authenticatedUser?.role !== "Admin") {
                 filters.user = new Types.ObjectId(authenticatedUser._id);
+                filters.transaction_status = {$ne: TransactionStatus.PENDING}
             }
 
             return await TransactionService.getTransactions(page, limit, filters);

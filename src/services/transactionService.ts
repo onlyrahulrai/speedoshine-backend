@@ -26,8 +26,12 @@ export const getTransactions = async (
 
         const transactions = await TransactionModel.find(filter)
             .lean()
-            .select("-__v")
+            .select("-__v -metadata")
             .populate("user", "name email phone")
+            .populate({
+                path:"resource.id",
+                select: "title type fees name"
+            })
             .skip(skip)
             .limit(effectiveLimit)
             .sort({ createdAt: -1 });

@@ -1,6 +1,7 @@
 import LicenseKey, { ILicenseKey } from "../models/LicenseKey";
 import { Types } from "mongoose";
 import { ErrorMessageResponse, FieldValidationError } from "../types/schema/Common";
+import AssessmentAccess, { AccessMethod, AccessStage } from "../models/AssessmentAccess";
 
 interface PaginatedResponse<T> {
   page: number;
@@ -133,14 +134,14 @@ export const deleteLicense = async (
 };
 
 export const validateLicense = async (
-  data: Partial<ILicenseKey>
+  userId: string,
+  data: Partial<ILicenseKey>,
 ): Promise<Partial<ILicenseKey> | null> => {
   const license = await LicenseKey.findOne({
     code: data.code,
     isDeleted: false,
     isActive: true,
-  }).select("-__v")
-    .lean();
+  }).lean();
 
   if (!license) {
     throw new Error("This license key is either inactive or could not be found.\nPlease reach out to our management team for verification or support.\nWe’ll get back to you within 24 hours.");
@@ -158,12 +159,40 @@ export const validateLicense = async (
     if ((license.usedCount || 0) >= usageLimit) {
       throw new Error("Your license has reached its maximum usage limit.\nPlease contact our management team for further assistance.");
     }
-  } 
+  }
 
-  if(license.scope === "ASSESSMENT" && data.assessment) {
+  if (license.scope === "ASSESSMENT" && data.assessment) {
     if (!license.assessment || license.assessment.toString() !== data.assessment.toString()) {
       throw new Error("This license is not valid for the specified assessment.\nPlease contact our management team for assistance.");
     }
+  }
+
+  // Upsert access
+  const access = await AssessmentAccess.findOneAndUpdate(
+    {
+      user: userId,
+      assessment: data?.assessment,
+      stage:{$ne: AccessStage.COMPLETED}
+    },
+    {
+      $setOnInsert: {
+        accessMethod: AccessMethod.LICENSE,
+        licenseKey: license._id,
+        stage: AccessStage.ACCESS_GRANTED,
+      }
+    },
+    {
+      upsert: true,
+      new: true,
+    }
+  );
+
+  // Increment usage only if newly created
+  if (access?.isNew) {
+    await LicenseKey.updateOne(
+      { _id: license._id },
+      { $inc: { usedCount: 1 } }
+    );
   }
 
   return {

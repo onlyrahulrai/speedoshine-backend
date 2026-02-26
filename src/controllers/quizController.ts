@@ -17,6 +17,7 @@ import {
 
 import * as QuizService from "../services/quizService";
 import {
+  QuizAccessResponse,
   QuizListResponse,
   QuizRequest,
   QuizResponse,
@@ -66,8 +67,29 @@ export class QuizController extends Controller {
     });
   }
 
+  @Security("jwt")
+  @Get("{assessmentId}/access")
+  @SuccessResponse(200, "Quiz retrieved successfully")
+  @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+  @Response<ErrorMessageResponse>(400, "Invalid quiz id supplied")
+  public async checkQuizAccess(@Request() req: any, @Path() assessmentId: string): Promise<QuizAccessResponse | ErrorMessageResponse> {
+    const userId = req.user?._id;
+
+    if (!userId) {
+      this.setStatus(400);
+      return { message: "Invalid User or unauthorized" } as any;
+    }
+
+    try {
+      return  await QuizService.checkQuizAccessById(userId, assessmentId) as QuizAccessResponse;
+    } catch (error:any) {
+      this.setStatus(400);
+      return { message: error?.message || "Failed to update quiz" } as ErrorMessageResponse;
+    }
+  }
+
   @Get("{id}")
-  @SuccessResponse<QuizResponse>(200, "Quiz retrieved successfully")
+  @SuccessResponse(200, "Quiz retrieved successfully")
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   @Response<ErrorMessageResponse>(400, "Invalid quiz id supplied")
   public async getQuiz(@Path() id: string, @Query() flag?: string,): Promise<QuizResponse | null> {
@@ -87,7 +109,6 @@ export class QuizController extends Controller {
     // Call a service that generates the Excel report
     return QuizService.generateExcelReport(id);
   }
-
 
   @Get("{id}/participants")
   @SuccessResponse<QuizResponse>(200, "Quiz participants retrieved successfully")

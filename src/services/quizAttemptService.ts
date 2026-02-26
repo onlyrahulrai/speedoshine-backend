@@ -15,6 +15,7 @@ import fs from "fs";
 import path from "path";
 import puppeteer from "puppeteer";
 import { fileURLToPath } from "url";
+import AssessmentAccess, { AccessStage } from "../models/AssessmentAccess";
 
 // FIX: Define __filename and __dirname for ES modules
 const __filename = fileURLToPath(import.meta.url);
@@ -32,7 +33,7 @@ interface SaveAnswerParams {
   textAnswer?: string;
 }
 
-export async function startAttempt(quizId: string, userId: string, body: QuizAttemptStart): Promise<QuizAttemptResponse> {
+export async function startAttempt(quizId: string, userId: string, body: QuizAttemptStart): Promise<any> {
   const { code, accessMethod, assessmentFor, subjectProfile } = body;
 
   const quiz = await QuizModel.findById(quizId)
@@ -53,6 +54,16 @@ export async function startAttempt(quizId: string, userId: string, body: QuizAtt
 
   if (!quiz || !quiz.isActive) {
     throw new Error("Quiz not found or inactive");
+  }
+
+  const access = await AssessmentAccess.findOne({
+    user: userId,
+    assessment: quizId,
+    stage: {$ne: AccessStage.COMPLETED}
+  });
+
+  if (!access || access.stage !== AccessStage.ACCESS_GRANTED) {
+    throw new Error("Access not granted for this assessment");
   }
 
   // check if an in-progress attempt already exists
@@ -77,62 +88,92 @@ export async function startAttempt(quizId: string, userId: string, body: QuizAtt
     },
   ]);
 
-  if (!attempt) {
-    // create new attempt
-    let licenseKey = null;
+  if (attempt) {
+    return attempt;
+  }
 
-    if (code) {
-      // validate license key 
-      const licenseKeyInstance = await LicenseKeyModel.findOne({ code, isActive: true, isDeleted: false });
+  // create new attempt
+  let licenseKey = null;
 
-      if (!licenseKeyInstance) {
-        throw new Error("Invalid license key");
-      }
+  if (code) {
+    // validate license key 
+    const licenseKeyInstance = await LicenseKeyModel.findOne({ code, isActive: true, isDeleted: false });
 
-      licenseKeyInstance.usedCount += 1;
-
-      await licenseKeyInstance.save();
-
-      licenseKey = licenseKeyInstance._id;
+    if (!licenseKeyInstance) {
+      throw new Error("Invalid license key");
     }
 
-    attempt = await new QuizAttemptModel({
-      quiz: quizId,
-      user: userId,
-      currentQuestionIndex: 0,
-      currentSectionIndex: 0,
-      score: 0,
-      percentage: 0,
-      correctAnswers: 0,
-      incorrectAnswers: 0,
-      startedAt: new Date(),
-      status: "in_progress",
-      sections: [],
-      questions: [],
-      licenseKey: licenseKey,
-      assessmentFor,
-      subjectProfile,
-      accessMethod
-    }).save();
+    licenseKey = licenseKeyInstance._id;
+  }
 
-    // ---------- Standard Quiz ----------
-    if (quiz.type === "standard") {
-      let questions = [...quiz.questions];
+  attempt = await new QuizAttemptModel({
+    quiz: quizId,
+    user: userId,
+    currentQuestionIndex: 0,
+    currentSectionIndex: 0,
+    score: 0,
+    percentage: 0,
+    correctAnswers: 0,
+    incorrectAnswers: 0,
+    startedAt: new Date(),
+    status: "in_progress",
+    sections: [],
+    questions: [],
+    licenseKey: licenseKey,
+    assessmentFor,
+    subjectProfile,
+    accessMethod
+  }).save();
 
-      // Shuffle questions if enabled
-      if (quiz.shuffleQuestions) questions = shuffle(questions);
+  // ---------- Standard Quiz ----------
+  if (quiz.type === "standard") {
+    let questions = [...quiz.questions];
 
-      // Prepare userQuestions
-      const userQuestions = await Promise.all(
-        questions.map(async (question: any) => {
+    // Shuffle questions if enabled
+    if (quiz.shuffleQuestions) questions = shuffle(questions);
+
+    // Prepare userQuestions
+    const userQuestions = await Promise.all(
+      questions.map(async (question: any) => {
+        let options = [...question.options];
+
+        if (quiz.shuffleOptions) {
+          options = shuffle(options, "options");
+        }
+
+        const userQuestion = new UserQuestionModel({
+          attempt: attempt._id,
+          question: question._id,
+          questionType: question.questionType,
+          options,
+        });
+
+        return userQuestion.save();
+      })
+    );
+
+    attempt.questions = userQuestions.map((uq) => uq._id);
+    attempt.totalMarks = quiz.totalMarks || questions.reduce((acc: number, q: any) => acc + q.points, 0);
+  } else {
+    // ---------- MULTI-SECTION QUIZ ----------
+    const sectionAttempts = [];
+
+    for (const section of quiz.sections) {
+      let secQuestions = [...section.questions];
+
+      // console.log("Section Questions:", JSON.stringify(secQuestions));
+
+      if (quiz.shuffleQuestions) secQuestions = shuffle(secQuestions);
+
+      const secUserQuestions = await Promise.all(
+        secQuestions.map(async (question: any) => {
           let options = [...question.options];
 
-          if (quiz.shuffleOptions) {
-            options = shuffle(options, "options");
-          }
+          if (quiz.shuffleOptions) options = shuffle(options, "options");
 
           const userQuestion = new UserQuestionModel({
             attempt: attempt._id,
+            section: section._id,
             question: question._id,
             questionType: question.questionType,
             options,
@@ -142,75 +183,54 @@ export async function startAttempt(quizId: string, userId: string, body: QuizAtt
         })
       );
 
-      attempt.questions = userQuestions.map((uq) => uq._id);
-      attempt.totalMarks = quiz.totalMarks || questions.reduce((acc, q) => acc + q.points, 0);
-    } else {
-      // ---------- MULTI-SECTION QUIZ ----------
-      const sectionAttempts = [];
-
-      for (const section of quiz.sections) {
-        let secQuestions = [...section.questions];
-
-        // console.log("Section Questions:", JSON.stringify(secQuestions));
-
-        if (quiz.shuffleQuestions) secQuestions = shuffle(secQuestions);
-
-        const secUserQuestions = await Promise.all(
-          secQuestions.map(async (question: any) => {
-            let options = [...question.options];
-
-            if (quiz.shuffleOptions) options = shuffle(options, "options");
-
-            const userQuestion = new UserQuestionModel({
-              attempt: attempt._id,
-              section: section._id,
-              question: question._id,
-              questionType: question.questionType,
-              options,
-            });
-
-            return userQuestion.save();
-          })
-        );
-
-        // snapshot of section attempt
-        sectionAttempts.push({
-          section: section._id,
-          questions: secUserQuestions.map((uq) => uq._id),
-          score: 0,
-          percentage: 0,
-          correctAnswers: 0,
-          incorrectAnswers: 0,
-          timeTaken: 0,
-          startedAt: new Date(),
-          status: "in_progress",
-        });
-      }
-
-      attempt.questions = [];
-      attempt.sections = sectionAttempts;
+      // snapshot of section attempt
+      sectionAttempts.push({
+        section: section._id,
+        questions: secUserQuestions.map((uq) => uq._id),
+        score: 0,
+        percentage: 0,
+        correctAnswers: 0,
+        incorrectAnswers: 0,
+        timeTaken: 0,
+        startedAt: new Date(),
+        status: "in_progress",
+      });
     }
 
-
-    attempt = await attempt.save();
-
-    attempt = await attempt.populate([
-      {
-        path: "questions",
-        populate: {
-          path: "question",
-          select: "_id questionText questionType media points timeLimit",
-        },
-      },
-      {
-        path: "sections",
-        populate: {
-          path: "questions",
-          select: "_id questionText questionType media points timeLimit",
-        },
-      },
-    ]);
+    attempt.questions = [];
+    attempt.sections = sectionAttempts;
   }
+
+
+  attempt = await attempt.save();
+
+  await AssessmentAccess.updateOne(
+    { _id: access._id },
+    {
+      $set: {
+        stage: AccessStage.ATTEMPT_CREATED,
+        attempt: attempt._id,
+      },
+    }
+  );
+
+  attempt = await attempt.populate([
+    {
+      path: "questions",
+      populate: {
+        path: "question",
+        select: "_id questionText questionType media points timeLimit",
+      },
+    },
+    {
+      path: "sections",
+      populate: {
+        path: "questions",
+        select: "_id questionText questionType media points timeLimit",
+      },
+    },
+  ]);
+
 
   return attempt;
 }
@@ -539,6 +559,21 @@ export async function submitAnswers(
   attempt.timeTaken = timeTaken;
 
   await attempt.save();
+
+  if (isAttemptCompleted) {
+    await AssessmentAccess.findOneAndUpdate(
+      {
+        user: userId,
+        assessment: attempt.quiz._id,
+        attempt: attempt?._id
+      },
+      {
+        $set: {
+          stage: AccessStage.COMPLETED,
+        }
+      }
+    );
+  }
 
   return {
     message: "Success",

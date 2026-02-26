@@ -26,7 +26,7 @@ export interface ITransaction extends Document {
 
   resource?: {
     id: Types.ObjectId;
-    model: "Assessment"; // restrict for now
+    model: "Quiz"; // restrict for now
   };
 
   transaction_status: TransactionStatus;
@@ -83,7 +83,7 @@ const TransactionSchema = new Schema<ITransaction>(
       },
       model: {
         type: String,
-        enum: ["Assessment"], // add more later
+        enum: ["Quiz"], // add more later
       },
     },
 

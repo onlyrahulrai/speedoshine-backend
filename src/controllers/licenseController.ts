@@ -93,6 +93,7 @@ export class LicenseController extends Controller {
   @Response<FieldValidationError>(422, "Validation error")
   @Response<ErrorMessageResponse>(400, "Invalid request parameters")
   public async validateLicense(
+    @Request() req:any,
     @Body() body: ValidateLicenseRequest
   ): Promise<LicenseResponse> {
     const licenseData = {
@@ -100,7 +101,7 @@ export class LicenseController extends Controller {
       assessment: body.assessment ? new Types.ObjectId(body.assessment) : undefined,
     };
 
-    return await LicenseService.validateLicense(licenseData) as LicenseResponse;
+    return await LicenseService.validateLicense(req.user?._id, licenseData) as LicenseResponse;
   }
 
   /** Create new license */

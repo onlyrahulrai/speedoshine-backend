@@ -6,6 +6,7 @@ import ExcelJS from "exceljs";
 import fs from "fs";
 import path from "path";
 import { Types } from "mongoose";
+import AssessmentAccess from "../models/AssessmentAccess";
 
 interface PaginationParams {
   page?: number;
@@ -786,4 +787,21 @@ export async function generateExcelReport(_id?: string): Promise<{ path?: string
   } catch (error: any) {
     throw new Error(error.message || "Internal Server Error");
   }
+}
+
+export async function checkQuizAccessById(
+  userId: Types.ObjectId,
+  assessmentId: string
+): Promise<any> {
+  const access = await AssessmentAccess.findOne({
+    assessment: assessmentId,
+    user: userId,
+    stage: {$ne:"completed"}
+  }).lean();
+
+  if (!access) {
+    throw new Error("Quiz Access not found");
+  }
+
+  return access;
 }

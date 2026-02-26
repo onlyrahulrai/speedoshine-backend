@@ -1,5 +1,6 @@
 import crypto from "crypto";
-import TransactionModel, { TransactionStatus } from "../models/Transaction";
+import TransactionModel, { TransactionStatus, TransactionType } from "../models/Transaction";
+import AssessmentAccess, { AccessMethod, AccessStage } from "../models/AssessmentAccess";
 
 export const razorpay = async (req: any) => {
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET!;
@@ -49,6 +50,10 @@ export const razorpay = async (req: any) => {
         return { message: "Transaction not found" };
     }
 
+    if (transaction.transaction_status === TransactionStatus.SUCCESSFUL) {
+        return { message: "Transaction already successful" };
+    }
+
     transaction.razorpay_payment_id = payment.id;
     transaction.razorpay_event_id = eventId;
     transaction.razorpay_signature = razorpay_signature;
@@ -61,17 +66,44 @@ export const razorpay = async (req: any) => {
 
     if (
         event === "payment.captured" &&
-        transaction.transaction_status !== TransactionStatus.SUCCESSFUL
+        payment.status === "captured"
     ) {
         transaction.transaction_status = TransactionStatus.SUCCESSFUL;
+
+        await transaction.save();
+
+        if (transaction.transaction_type === TransactionType.ASSESSMENT_ATTEMPT) {
+            if (!transaction.resource?.id) {
+                throw new Error("Missing assessment reference");
+            }
+
+            await AssessmentAccess.findOneAndUpdate(
+                {
+                    user: transaction.user,
+                    assessment: transaction?.resource?.id,
+                },
+                {
+                    $set: {
+                        accessMethod: AccessMethod.PAYMENT,
+                        transaction: transaction._id,
+                        stage: AccessStage.ACCESS_GRANTED,
+                    }
+                },
+                {
+                    upsert: true,
+                    new: true,
+                }
+            );
+
+        }
+        return { message: "Payment processed successfully" };
     }
 
     if (event === "payment.failed") {
         transaction.transaction_status = TransactionStatus.FAILED;
         transaction.error_details = payment.error_description || "Payment failed";
+        await transaction.save();
     }
-
-    await transaction.save();
 
     return { message: "Webhook processed successfully" };
 };
