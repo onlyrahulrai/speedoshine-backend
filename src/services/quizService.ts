@@ -484,6 +484,9 @@ export async function getQuizParticipants(
           status: 1,
           score: 1,
           percentage: 1,
+          assessmentFor: 1,
+          accessMethod: 1,
+          subjectProfile: 1,
           createdAt: 1,
           startedAt: 1,
           completedAt: 1,
@@ -494,6 +497,8 @@ export async function getQuizParticipants(
           "user.lastName": 1,
           "user.email": 1,
           "user.phone": 1,
+          "user.occupation": 1,
+          "user.organization": 1,
           "quiz._id": 1,
           "quiz.title": 1,
         },
@@ -796,7 +801,7 @@ export async function checkQuizAccessById(
   const access = await AssessmentAccess.findOne({
     assessment: assessmentId,
     user: userId,
-    stage: {$ne:"completed"}
+    stage: { $ne: "completed" }
   }).lean();
 
   if (!access) {
