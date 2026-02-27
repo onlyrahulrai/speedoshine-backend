@@ -59,7 +59,7 @@ export async function startAttempt(quizId: string, userId: string, body: QuizAtt
   const access = await AssessmentAccess.findOne({
     user: userId,
     assessment: quizId,
-    stage: {$ne: AccessStage.COMPLETED}
+    stage: { $ne: AccessStage.COMPLETED }
   });
 
   if (!access || access.stage !== AccessStage.ACCESS_GRANTED) {
@@ -862,9 +862,65 @@ export async function saveGeneratedAttemptReport({
 
     const page = await browser.newPage();
 
+    const fullHTML = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+      <meta charset="UTF-8" />
+      <style>
+         body {
+              font-family: 'Georgia', 'Times New Roman', serif;
+              max-width: 800px;
+              margin: 40px auto;
+              padding: 20px;
+              color: #1a1a1a;
+              line-height: 1.7;
+          }
+
+          hr { border: none; border-top: 1px solid #ccc; margin: 20px 0; }
+            
+          img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            margin: 20px auto;
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+
+          @media print {
+              body { margin: 20px; }
+            }
+
+            h1, h2, h3, h4, h5, h6 {
+              font-weight: bold;
+              margin-top: 1em;
+              margin-bottom: 0.5em;
+            }
+
+            p {
+              margin-bottom: 1em;
+            }
+
+            ul, ol {
+              padding-left: 2em;
+              margin-bottom: 1em;
+            }
+
+            li {
+              margin-bottom: 0.5em;
+            }
+      </style>
+      </head>
+      <body>
+        ${reports}
+      </body>
+      </html>
+    `;
+
     // Load HTML content
-    await page.setContent(reports, {
-      waitUntil: "networkidle0",
+    await page.setContent(fullHTML, {
+      waitUntil: ["load", "networkidle0"],
     });
 
     // Generate PDF
