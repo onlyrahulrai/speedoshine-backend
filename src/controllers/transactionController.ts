@@ -39,6 +39,7 @@ export class TransactionController extends Controller {
         @Query() limit: number = 10,
         @Query() transaction_type?: string,
         @Query() user?: string,
+        @Query() source?: string
     ): Promise<PaginatedResponse<any>> {
         try {
             const filters: Record<string, any> = {};
@@ -53,7 +54,7 @@ export class TransactionController extends Controller {
 
             const authenticatedUser = req.user;
 
-            if (authenticatedUser?.role !== "Admin") {
+            if (authenticatedUser?.role !== "Admin" && source !== "Admin") {
                 filters.user = new Types.ObjectId(authenticatedUser._id);
                 filters.transaction_status = {$ne: TransactionStatus.PENDING}
             }
