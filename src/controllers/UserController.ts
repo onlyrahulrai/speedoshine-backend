@@ -38,8 +38,8 @@ export class UserController extends Controller {
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   @Response<ErrorMessageResponse>(400, "Invalid request")
   public async getUsers(
-    @Query() page: number,
-    @Query() limit: number,
+    @Query() page?: number,
+    @Query() limit?: number,
     @Query() search?: string,
   ): Promise<UserListResponse> {
     return await UserService.getAllUsers(page, limit, search);

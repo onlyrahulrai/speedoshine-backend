@@ -1,5 +1,5 @@
 export interface UserRequest {
-  _id?:string;
+  _id?: string;
   firstName?: string;
   lastName?: string;
   email?: string;
@@ -8,6 +8,7 @@ export interface UserRequest {
   occupation?: string;
   organization?: string;
   password?: string;
+  isActive?: boolean;
 }
 
 export interface UserResponse {
@@ -19,6 +20,8 @@ export interface UserResponse {
   email: string;
   phone?: string;
   age?: number;
+  occupation?: string;
+  organization?: string;
   address?: any;
   profile?: any;
   bio?: any;
@@ -27,6 +30,7 @@ export interface UserResponse {
   role?: any;
   createdAt: Date;
   updatedAt: Date;
+  __V?: string
 }
 
 export interface UserListResponse {

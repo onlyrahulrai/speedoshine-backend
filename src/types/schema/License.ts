@@ -1,4 +1,15 @@
 // types/schema/License.ts
+export interface CreateLicenseRequest {
+  name: string;
+  code: string;
+  scope?: "GLOBAL" | "ASSESSMENT";
+  assessment?: string | null;
+  hasUsageLimit?: boolean;
+  usageLimit?: number | null;
+  expiresAt?: Date;
+  isActive?: boolean;
+}
+
 export interface LicenseRequest {
   _id?: string;
   name: string;

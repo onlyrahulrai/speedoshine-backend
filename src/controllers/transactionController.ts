@@ -56,7 +56,7 @@ export class TransactionController extends Controller {
 
             if (authenticatedUser?.role !== "Admin" && source !== "Admin") {
                 filters.user = new Types.ObjectId(authenticatedUser._id);
-                filters.transaction_status = {$ne: TransactionStatus.PENDING}
+                filters.transaction_status = { $ne: TransactionStatus.PENDING }
             }
 
             return await TransactionService.getTransactions(page, limit, filters);
@@ -76,6 +76,20 @@ export class TransactionController extends Controller {
     ): Promise<TransactionResponse | null> {
         try {
             return await TransactionService.getTransactionById(id) as TransactionResponse | null;
+        } catch (error: any) {
+            this.setStatus(500);
+            throw new Error(error.message || "Failed to fetch transaction");
+        }
+    }
+
+    @Security("jwt")
+    @Post("{id}/cancel")
+    @SuccessResponse(200, "Transaction cancelled")
+    public async cancelTransaction(
+        @Path() id: string
+    ): Promise<TransactionResponse | null> {
+        try {
+            return await TransactionService.cancelTransaction(id) as TransactionResponse | null;
         } catch (error: any) {
             this.setStatus(500);
             throw new Error(error.message || "Failed to fetch transaction");
@@ -133,41 +147,6 @@ export class TransactionController extends Controller {
         } catch (error: any) {
             this.setStatus(400);
             throw new Error(error.message || "Failed to update transaction");
-        }
-    }
-
-    /* ------------------------------------
-       VERIFY PAYMENT
-    ------------------------------------ */
-    @Security("jwt")
-    @Post("{id}/verify")
-    @SuccessResponse(200, "Transaction verified")
-    public async verifyTransaction(
-        @Path() id: string,
-        @Body() body: any // Razorpay verification payload
-    ): Promise<TransactionResponse | null> {
-        try {
-            return await TransactionService.verifyTransaction(id, body) as TransactionResponse;
-        } catch (error: any) {
-            this.setStatus(400);
-            throw new Error(error.message || "Payment verification failed");
-        }
-    }
-
-    /* ------------------------------------
-       REFUND TRANSACTION
-    ------------------------------------ */
-    @Security("jwt")
-    @Post("{id}/refund")
-    @SuccessResponse(200, "Transaction refunded")
-    public async refundTransaction(
-        @Path() id: string
-    ): Promise<TransactionResponse | null> {
-        try {
-            return await TransactionService.refundTransaction(id) as TransactionResponse;
-        } catch (error: any) {
-            this.setStatus(400);
-            throw new Error(error.message || "Refund failed");
         }
     }
 }

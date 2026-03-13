@@ -1,6 +1,6 @@
 import { validatePhone, validateEmail, validateString } from "./common";
 import User from "../../models/User";
-import { TokenBlacklist } from "../../models/TokenBlacklist";
+import bcrypt from "bcryptjs";
 
 export const validateRegister = async (values: any) => {
   let errors: Record<string, string> = {};
@@ -113,11 +113,13 @@ export const validateChangePassword = async (values: any, id: number) => {
   }
 
   if (Object.keys(errors).length === 0) {
-    // const user = await prisma.user.findUnique({ where: { id } });
-    // const isMatch = await bcrypt.compare(values.oldPassword, user.password);
-    // if (!isMatch) {
-    //   errors.oldPassword = "Old password is incorrect";
-    // }
+    const user = await User.findById(id);
+
+    const isMatch = await bcrypt.compare(values.oldPassword, user?.password);
+
+    if (!isMatch) {
+      errors.oldPassword = "Password update failed. Please verify your current password.";
+    }
   }
 
   return errors;

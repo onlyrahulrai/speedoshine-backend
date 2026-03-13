@@ -373,7 +373,7 @@ export async function updateQuiz(id: string, data: any) {
 }
 
 export async function deleteQuiz(id: string) {
-  await QuizModel.findByIdAndUpdate(id, { isDeleted: true });
+  await QuizModel.findByIdAndUpdate(id, { isDeleted: true, isActive: false });
 }
 
 // Get quiz attempts for a quiz, optionally filtered by userId

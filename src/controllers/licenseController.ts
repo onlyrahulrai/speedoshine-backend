@@ -20,6 +20,7 @@ import { expressAuthentication } from "../auth/expressAuthentication";
 import { Types } from "mongoose";
 
 import {
+  CreateLicenseRequest,
   LicenseListResponse,
   LicenseRequest,
   LicenseResponse,
@@ -47,6 +48,7 @@ export class LicenseController extends Controller {
    */
 
   /** Get all license keys with pagination */
+  @Security("jwt")
   @Get("/")
   @SuccessResponse(
     200,
@@ -93,7 +95,7 @@ export class LicenseController extends Controller {
   @Response<FieldValidationError>(422, "Validation error")
   @Response<ErrorMessageResponse>(400, "Invalid request parameters")
   public async validateLicense(
-    @Request() req:any,
+    @Request() req: any,
     @Body() body: ValidateLicenseRequest
   ): Promise<LicenseResponse> {
     const licenseData = {
@@ -111,12 +113,15 @@ export class LicenseController extends Controller {
   @Response<FieldValidationError>(422, "Validation error")
   @Response<ErrorMessageResponse>(400, "Invalid request parameters")
   public async createLicense(
-    @Body() body: LicenseRequest
+    @Body() body: CreateLicenseRequest
   ): Promise<LicenseResponse> {
-    const licenseData = {
+    const licenseData: Record<string, any> = {
       ...body,
-      assessment: body.assessment ? new Types.ObjectId(body.assessment) : undefined,
     };
+
+    if (body.assessment) {
+      licenseData.assessment = new Types.ObjectId(body.assessment);
+    }
 
     try {
       return await LicenseService.createLicense(licenseData) as LicenseResponse;
@@ -146,7 +151,7 @@ export class LicenseController extends Controller {
       this.setStatus(status);
 
       // ✅ Fallback error
-      return errors as LicenseResponse;
+      return errors as any;
     }
   }
 
@@ -161,13 +166,16 @@ export class LicenseController extends Controller {
     @Path() id: string,
     @Body() body: LicenseRequest
   ): Promise<LicenseResponse> {
-    const licenseData = {
-      ...body,
-      assessment: body.assessment ? new Types.ObjectId(body.assessment) : null,
+    const licenseData: Record<string, any> = {
+      ...body
     };
 
+    if (body.assessment) {
+      licenseData.assessment = new Types.ObjectId(body.assessment);
+    }
+
     try {
-      return await LicenseService.updateLicense(id, licenseData) as LicenseResponse;
+      return await LicenseService.updateLicense(id, licenseData) as any;
     } catch (error: any) {
       let status = 400;
       let errors = {}

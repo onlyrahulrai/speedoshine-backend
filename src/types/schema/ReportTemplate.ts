@@ -23,6 +23,7 @@ export interface ReportTemplateRequest {
   content: string;
   scope: ReportTemplateScope;
   isActive?: boolean;
+  isDeleted?: boolean;
 }
 
 /**

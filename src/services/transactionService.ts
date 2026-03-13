@@ -29,7 +29,7 @@ export const getTransactions = async (
             .select("-__v -metadata")
             .populate("user", "name email phone")
             .populate({
-                path:"resource.id",
+                path: "resource.id",
                 select: "title type fees name"
             })
             .skip(skip)
@@ -135,31 +135,13 @@ export const updateTransaction = async (id: string, body: TransactionRequest) =>
     }).select("-__v")
 };
 
-export const verifyTransaction = async (id: string, payload: any) => {
+export const cancelTransaction = async (id: string) => {
     if (!Types.ObjectId.isValid(id)) return null;
 
-    const transaction = await TransactionModel.findById(id);
-
-    if (!transaction) return null;
-
-    // Simulate verification logic
-
-    payload.transaction_status = TransactionStatus.SUCCESSFUL;
-
-    return await TransactionModel.findByIdAndUpdate(id, { $set: payload }, { new: true, upsert: true });
-};
-
-export const refundTransaction = async (id: string) => {
-    if (!Types.ObjectId.isValid(id)) return null;
-
-    const transaction = await TransactionModel.findById(id).select("-__v");
-
-    if (!transaction) return null;
-
-    // Simulate refund logic
-    transaction.transaction_status = TransactionStatus.FAILED;
-
-    await transaction.save();
-
-    return transaction.toObject();
+    return await TransactionModel.findByIdAndUpdate(id, {
+        transaction_status: TransactionStatus.CANCELLED,
+    }, {
+        new: true,
+        runValidators: true,
+    }).select("-__v")
 };

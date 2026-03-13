@@ -4,7 +4,7 @@ export type TransactionRequest = {
   amount: number;
   transaction_type: string;
   metadata?: any; // for any additional info like assessmentId
-  notes?: any
+  notes?: any;
 };
 
 // For tsoa (API schema)

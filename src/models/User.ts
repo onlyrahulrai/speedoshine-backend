@@ -8,8 +8,8 @@ export interface IUser extends Document {
   email?: string;
   phone?: string;
   age?: number;
-  occupation?:string;
-  organization?:string;
+  occupation?: string;
+  organization?: string;
   address?: string;
   profile?: string;
   password?: string;

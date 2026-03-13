@@ -81,8 +81,8 @@ export class QuizController extends Controller {
     }
 
     try {
-      return  await QuizService.checkQuizAccessById(userId, assessmentId) as QuizAccessResponse;
-    } catch (error:any) {
+      return await QuizService.checkQuizAccessById(userId, assessmentId) as QuizAccessResponse;
+    } catch (error: any) {
       this.setStatus(400);
       return { message: error?.message || "Failed to update quiz" } as ErrorMessageResponse;
     }
@@ -99,7 +99,7 @@ export class QuizController extends Controller {
   /**
  * Get the Excel report for a specific quiz
  */
-  @Get("{id}/report/excel")
+  @Get("{id}/participants/excel")
   @SuccessResponse<{ path?: string }>(200, "Quiz report retrieved successfully")
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   @Response<ErrorMessageResponse>(400, "Invalid quiz id supplied")

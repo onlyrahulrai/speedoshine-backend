@@ -11,7 +11,7 @@ import { v4 as uuidV4 } from "uuid";
 const myQueue = new Queue("DD-EmailTask");
 
 export const registerUser = async (data: RegisterInput) => {
-  const { firstName, lastName, email, phone, occupation, organization,  age,  password } = data;
+  const { firstName, lastName, email, phone, occupation, organization, age, password } = data;
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -131,8 +131,13 @@ export const changePassword = async (
 export const requestPasswordReset = async (email: string) => {
   const user = await User.findOne({ email });
 
+  if (!user) {
+    // Avoid user enumeration by returning the same success message
+    throw new Error("If the email address is registered, you will receive a password reset link shortly. Please check your inbox or spam folder. If you don’t receive the email, verify the address or sign up for a new account.");
+  }
+
   // Generate JWT token with user id and expiration (15 minutes)
-  const token = generateToken({ userId: user?._id.toString() }, "15m");
+  const token = generateToken({ userId: String(user._id) }, "15m");
 
   const resetLink = `${process.env.FRONTEND_URL}/confirm-reset-password?token=${token}`;
 
@@ -286,7 +291,7 @@ export const resendVerificationEmail = async (user: any) => {
   } catch (error) {
     throw new Error(
       error.message ||
-        "❌ We couldn’t send the verification email. Please check your email address or try again shortly."
+      "❌ We couldn’t send the verification email. Please check your email address or try again shortly."
     );
   }
 };

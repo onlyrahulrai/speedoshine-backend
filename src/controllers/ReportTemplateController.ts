@@ -52,14 +52,14 @@ export class ReportTemplateController extends Controller {
     @Query() page?: number,
     @Query() limit?: number,
     @Query() scope?: string,
-    @Query() isActive?: boolean,
+    @Query() flag?: "active" | "admin",
     @Query() fields?: string
   ): Promise<ReportTemplateListResponse> {
     return await ReportTemplateService.getAllReportTemplates(
       page,
       limit,
       scope,
-      isActive,
+      flag,
       fields
     ) as ReportTemplateListResponse;
   }

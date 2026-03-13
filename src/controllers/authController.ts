@@ -61,9 +61,8 @@ export class AuthController extends Controller {
 
       this.setStatus(200);
 
-      return user; // merge user details + token
+      return user as any; // merge user details + token
     } catch (error: any) {
-      console.error("Login error:", error);
       this.setStatus(400);
       return { message: error?.message || "Failed to login" };
     }
@@ -92,20 +91,7 @@ export class AuthController extends Controller {
       this.setStatus(201);
 
       // Ensure createdAt and updatedAt are present for UserResponse
-      return {
-        ...user,
-        _id: user._id?.toString(),
-        createdAt: (user as any).createdAt ?? new Date(),
-        updatedAt: (user as any).updatedAt ?? new Date(),
-        firstName: user.firstName ?? "",
-        lastName: user.lastName ?? "",
-        username: user.username ?? "",
-        email: user.email ?? "",
-        phone: user.phone ?? "",
-        age: user.age ?? 0,
-        address: user.address ?? "",
-        profile: user.profile ?? "",
-      };
+      return user as any;
     } catch (error: any) {
       console.error("Registration error:", error);
       this.setStatus(400);
@@ -219,7 +205,7 @@ export class AuthController extends Controller {
   @SuccessResponse(202, "Email verification initiated")
   @Response<ErrorMessageResponse>(400, "Invalid request parameters or token")
   public async verifyEmail(
-    @Body() body?: VerifyEmailInput
+    @Body() body: VerifyEmailInput
   ): Promise<{ message: string } | ErrorMessageResponse> {
     try {
       const result = await AuthService.verifyEmail(body.token);
@@ -273,7 +259,7 @@ export class AuthController extends Controller {
 
       this.setStatus(200);
 
-      return user;
+      return user as any;
     } catch (error: any) {
       this.setStatus(400);
       return { message: error?.message };
@@ -293,9 +279,9 @@ export class AuthController extends Controller {
     @Request() req: any,
     @Body()
     body: {
-      oldPassword?: string;
-      newPassword?: string;
-      confirmPassword?: string;
+      oldPassword: string;
+      newPassword: string;
+      confirmPassword: string;
     }
   ): Promise<
     | UserResponse
@@ -325,7 +311,7 @@ export class AuthController extends Controller {
 
       this.setStatus(200);
 
-      return user;
+      return user as any;
     } catch (error: any) {
       this.setStatus(400);
       return { message: error?.message };
@@ -353,9 +339,9 @@ export class AuthController extends Controller {
     }
 
     try {
-      const user = await AuthService.getUserDetails(userId);
       this.setStatus(200);
-      return user;
+
+      return await AuthService.getUserDetails(userId) as any;
     } catch (error: any) {
       this.setStatus(400);
       return { message: error?.message || "Invalid request" };

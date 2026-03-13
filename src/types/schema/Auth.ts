@@ -37,6 +37,8 @@ export interface EditProfileInput {
   address?: any;
   profile?: any;
   bio?: string;
+  occupation?: string;
+  organization?: string;
 }
 
 export interface AuthUserResponse extends UserResponse {
