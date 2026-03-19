@@ -68,14 +68,16 @@ export const getAllBlogs = async (req: any, query: any): Promise<BlogListRespons
   };
 };
 
-export const getBlogById = async (req: any, blogId: string): Promise<BlogDetailsResponse> => {
+export const getBlogById = async (req: any, blogIdOrSlug: string): Promise<BlogDetailsResponse> => {
   const user = req?.user;
 
-  if (!Types.ObjectId.isValid(blogId)) {
-    throw new Error("Invalid blog ID");
-  }
+  let blog: any = null;
 
-  const blog = await BlogModel.findById(blogId).select("-__v").lean();
+  if (Types.ObjectId.isValid(blogIdOrSlug)) {
+    blog = await BlogModel.findById(blogIdOrSlug).populate("author", "firstName lastName name").select("-__v").lean();
+  } else {
+    blog = await BlogModel.findOne({ slug: blogIdOrSlug }).populate("author", "firstName lastName name").select("-__v").lean();
+  }
 
   if (!blog) {
     throw new Error("Blog not found");
@@ -85,6 +87,10 @@ export const getBlogById = async (req: any, blogId: string): Promise<BlogDetails
 
   if ((!user || userRole === USER_ROLES.USER) && !blog.published) {
     throw new Error("Blog not found");
+  }
+
+  if (blog.author && typeof blog.author === 'object') {
+    (blog.author as any).name = `${(blog.author as any).firstName || ''} ${(blog.author as any).lastName || ''}`.trim();
   }
 
   return blog as unknown as BlogDetailsResponse;

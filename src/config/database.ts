@@ -1,4 +1,7 @@
 import mongoose from 'mongoose';
+import { imageTrackerPlugin } from '../helper/utils/imageTrackerPlugin';
+
+mongoose.plugin(imageTrackerPlugin);
 
 export const connectDB = async (): Promise<void> => {
   try {

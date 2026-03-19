@@ -53,8 +53,8 @@ export class BlogController extends Controller {
     return await BlogService.getAllBlogs(req, { page, limit, search, category, tag, author, status }) as BlogListResponse;
   }
 
-  /** Get a single blog post by ID */
-  @Get("/{blogId}")
+  /** Get a single blog post by Id or Slug */
+  @Get("/{blogIdOrSlug}")
   @SuccessResponse(
     200,
     "Blog retrieved successfully"
@@ -63,10 +63,10 @@ export class BlogController extends Controller {
   @Response<ErrorResponse>(400, API_MESSAGES.FETCH_FAILED)
   public async getBlogById(
     @Request() req: any,
-    @Path() blogId: string
+    @Path() blogIdOrSlug: string
   ): Promise<BlogDetailsResponse | ErrorMessageResponse> {
     try {
-      return await BlogService.getBlogById(req, blogId) as BlogDetailsResponse;
+      return await BlogService.getBlogById(req, blogIdOrSlug) as BlogDetailsResponse;
     } catch (error: any) {
       this.setStatus(400);
       return { message: error.message || API_MESSAGES.FETCH_FAILED };

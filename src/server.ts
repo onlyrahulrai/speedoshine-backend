@@ -21,6 +21,7 @@ import { connectDB } from "./config/database";
 import upload from "./helper/utils/storage";
 import { formatFile } from "./helper/utils/common";
 import axios from 'axios';
+import Upload from "./models/Upload";
 
 (global as any).expressAuthentication = expressAuthentication;
 
@@ -75,13 +76,25 @@ app.post(
 app.post(
   "/api/upload/single",
   upload.single("file"),
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
     const fileResponse = formatFile(
       req.file,
       `${req.protocol}://${req.get("host")}`
     );
+
+    try {
+      await Upload.create({
+        url: fileResponse.url,
+        filename: fileResponse.filename,
+        mimetype: fileResponse.mimetype,
+        size: fileResponse.size,
+        used: false,
+      });
+    } catch (error) {
+      console.error("Failed to save upload record:", error);
+    }
 
     return res.json({ file: fileResponse });
   }
@@ -90,15 +103,31 @@ app.post(
 app.post(
   "/api/upload/multiple",
   upload.array("files", 5),
-  (req: Request, res: Response) => {
+  async (req: Request, res: Response) => {
     const files = req.files as Express.Multer.File[] | undefined;
 
     if (!files?.length)
       return res.status(400).json({ message: "No files uploaded" });
 
+    const fileResponses = files.map((f) => formatFile(f, `${req.protocol}://${req.get("host")}`));
+
+    try {
+      await Upload.insertMany(
+        fileResponses.map((f) => ({
+          url: f.url,
+          filename: f.filename,
+          mimetype: f.mimetype,
+          size: f.size,
+          used: false,
+        }))
+      );
+    } catch (error) {
+      console.error("Failed to save upload records:", error);
+    }
+
     return res.json({
       count: files.length,
-      files: files.map((f) => formatFile(f, `${req.protocol}://${req.get("host")}`)),
+      files: fileResponses,
     });
 
   }
