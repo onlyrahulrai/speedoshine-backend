@@ -4,6 +4,22 @@ export const API_MESSAGES = {
     DELETE_FAILED: "We couldn’t delete the data. Please check your request and try again.",
     CREATE_FAILED: "We couldn’t create the data. Please check your request and try again.",
     UPDATE_FAILED: "We couldn’t update the data. Please check your request and try again.",
+    LOGIN_SUCCESS: "Login successful.",
+    LOGIN_FAILED: "We couldn’t log you in. Please check your credentials and try again.",
+    REGISTER_SUCCESS: "User registered successfully.",
+    REGISTER_FAILED: "We couldn’t register you. Please check your details and try again.",
+    VERIFY_EMAIL_SUCCESS: "Email verified successfully.",
+    VERIFY_EMAIL_FAILED: "Your verification link has expired or is invalid. Please log in to request a new verification email.",
+    VERIFY_PHONE_SUCCESS: "Phone number verified successfully.",
+    VERIFY_PHONE_FAILED: "Phone verification failed. Please try again.",
+    OTP_SUCCESS: "Verification OTP has been sent.",
+    OTP_FAILED: "We couldn’t send the verification OTP. Please try again.",
+    PASSWORD_RESET_SUCCESS: "Your password has been reset successfully.",
+    PASSWORD_RESET_FAILED: "We couldn’t reset your password. Please check your token and try again.",
+    PASSWORD_RESET_REQUEST_SUCCESS: "If the email address is registered, you will receive a password reset link shortly.",
+    UNAUTHORIZED: "You must be logged in to perform this action.",
+    FORBIDDEN: "You do not have permission to perform this action.",
+    VALIDATION_FAILED: "One or more fields failed validation.",
 };
 
 export const USER_ROLES = {

@@ -19,9 +19,10 @@ import {
 } from "../types/schema/Transaction";
 
 import * as TransactionService from "../services/transactionService";
-import { PaginatedResponse } from "../types/schema/Common";
+import { ErrorMessageResponse, PaginatedResponse } from "../types/schema/Common";
 import { Types } from "mongoose";
 import { TransactionStatus } from "../models/Transaction";
+import { API_MESSAGES } from "../constraints/common";
 
 @Route("transactions")
 @Tags("Transactions")
@@ -40,7 +41,7 @@ export class TransactionController extends Controller {
         @Query() transaction_type?: string,
         @Query() user?: string,
         @Query() source?: string
-    ): Promise<PaginatedResponse<any>> {
+    ): Promise<PaginatedResponse<any> | ErrorMessageResponse> {
         try {
             const filters: Record<string, any> = {};
 
@@ -61,8 +62,8 @@ export class TransactionController extends Controller {
 
             return await TransactionService.getTransactions(page, limit, filters);
         } catch (error: any) {
-            this.setStatus(500);
-            throw new Error(error.message || "Failed to fetch transactions");
+            this.setStatus(400);
+            return { message: error.message || API_MESSAGES.FETCH_LIST_FAILED };
         }
     }
     /* ------------------------------------
@@ -73,12 +74,12 @@ export class TransactionController extends Controller {
     @SuccessResponse(200, "Transaction retrieved")
     public async getTransaction(
         @Path() id: string
-    ): Promise<TransactionResponse | null> {
+    ): Promise<TransactionResponse | ErrorMessageResponse | null> {
         try {
             return await TransactionService.getTransactionById(id) as TransactionResponse | null;
         } catch (error: any) {
-            this.setStatus(500);
-            throw new Error(error.message || "Failed to fetch transaction");
+            this.setStatus(400);
+            return { message: error.message || API_MESSAGES.FETCH_FAILED };
         }
     }
 
@@ -87,12 +88,12 @@ export class TransactionController extends Controller {
     @SuccessResponse(200, "Transaction cancelled")
     public async cancelTransaction(
         @Path() id: string
-    ): Promise<TransactionResponse | null> {
+    ): Promise<TransactionResponse | ErrorMessageResponse | null> {
         try {
             return await TransactionService.cancelTransaction(id) as TransactionResponse | null;
         } catch (error: any) {
-            this.setStatus(500);
-            throw new Error(error.message || "Failed to fetch transaction");
+            this.setStatus(400);
+            return { message: error.message || API_MESSAGES.UPDATE_FAILED };
         }
     }
 
@@ -105,13 +106,13 @@ export class TransactionController extends Controller {
     public async createTransaction(
         @Request() req: any,
         @Body() body: TransactionRequest
-    ): Promise<TransactionResponse> {
+    ): Promise<TransactionResponse | ErrorMessageResponse> {
         try {
             const userId = req.user?._id;
 
             if (!userId) {
                 this.setStatus(400);
-                throw new Error("Invalid user");
+                return { message: "Invalid user" };
             }
 
             const transaction = await TransactionService.createTransaction(userId, body);
@@ -121,7 +122,7 @@ export class TransactionController extends Controller {
             return transaction as TransactionResponse;
         } catch (error: any) {
             this.setStatus(400);
-            throw new Error(error.message || "Failed to create transaction");
+            return { message: error.message || API_MESSAGES.CREATE_FAILED };
         }
     }
 
@@ -134,7 +135,7 @@ export class TransactionController extends Controller {
     public async updateTransaction(
         @Path() id: string,
         @Body() body: TransactionRequest
-    ): Promise<TransactionResponse | null> {
+    ): Promise<TransactionResponse | ErrorMessageResponse | null> {
         try {
             const updated = await TransactionService.updateTransaction(id, body);
 
@@ -146,7 +147,7 @@ export class TransactionController extends Controller {
             return updated as TransactionResponse;
         } catch (error: any) {
             this.setStatus(400);
-            throw new Error(error.message || "Failed to update transaction");
+            return { message: error.message || API_MESSAGES.UPDATE_FAILED };
         }
     }
 }

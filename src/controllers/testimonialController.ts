@@ -26,6 +26,7 @@ import {
   SuccessMessageResponse,
 } from "../types/schema/Common";
 import { AuthenticationRequiredResponse } from "../types/schema/Auth";
+import { API_MESSAGES } from "../constraints/common";
 import { validateManageTestimonials } from "../helper/validators/testimonials";
 
 @Route("testimonials")
@@ -38,7 +39,7 @@ export class TestimonialController extends Controller {
     "List of testimonials retrieved successfully"
   )
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
-  @Response<ErrorMessageResponse>(400, "Invalid request")
+  @Response<ErrorMessageResponse>(400, API_MESSAGES.FETCH_LIST_FAILED)
   public async getTestimonials(
     @Query() page?: number,
     @Query() limit?: number,
@@ -47,7 +48,7 @@ export class TestimonialController extends Controller {
       return await TestimonialService.getAllTestimonials(page, limit);
     } catch (error: any) {
       this.setStatus(400);
-      return { message: error.message || "Failed to fetch testimonials" };
+      return { message: error.message || API_MESSAGES.FETCH_LIST_FAILED };
     }
   }
 
@@ -56,13 +57,13 @@ export class TestimonialController extends Controller {
   @Get("{id}")
   @SuccessResponse(200, "Testimonial retrieved successfully")
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
-  @Response<ErrorMessageResponse>(400, "Invalid testimonial id supplied")
+  @Response<ErrorMessageResponse>(400, API_MESSAGES.FETCH_FAILED)
   public async getTestimonial(@Path() id: string): Promise<TestimonialDetailsResponse | ErrorMessageResponse | null> {
     try {
       return await TestimonialService.getTestimonialById(id) as unknown as TestimonialDetailsResponse;
     } catch (error: any) {
       this.setStatus(400);
-      return { message: error.message || "Failed to fetch testimonial" };
+      return { message: error.message || API_MESSAGES.FETCH_FAILED };
     }
   }
 
@@ -71,7 +72,7 @@ export class TestimonialController extends Controller {
   @Post("/")
   @SuccessResponse(201, "Testimonial created successfully")
   @Response<FieldValidationError>(422, "Validation error")
-  @Response<ErrorMessageResponse>(400, "Invalid request parameters")
+  @Response<ErrorMessageResponse>(400, API_MESSAGES.CREATE_FAILED)
   public async createTestimonial(@Body() body: CreateTestimonialRequest): Promise<TestimonialDetailsResponse | FieldValidationError | ErrorMessageResponse> {
     try {
       const fields: Record<string, string> = validateManageTestimonials(body);
@@ -84,7 +85,7 @@ export class TestimonialController extends Controller {
       return await TestimonialService.createTestimonial(body) as unknown as TestimonialDetailsResponse;
     } catch (error: any) {
       this.setStatus(400);
-      return { message: error.message || "Failed to create testimonial" };
+      return { message: error.message || API_MESSAGES.CREATE_FAILED };
     }
   }
 
@@ -93,7 +94,7 @@ export class TestimonialController extends Controller {
   @Put("{id}")
   @SuccessResponse(200, "Testimonial updated successfully")
   @Response<FieldValidationError>(422, "Validation error")
-  @Response<ErrorMessageResponse>(400, "Invalid request parameters")
+  @Response<ErrorMessageResponse>(400, API_MESSAGES.UPDATE_FAILED)
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   public async updateTestimonial(
     @Path() id: string,
@@ -111,7 +112,7 @@ export class TestimonialController extends Controller {
       return await TestimonialService.updateTestimonial(id, body) as unknown as TestimonialDetailsResponse;
     } catch (error: any) {
       this.setStatus(400);
-      return { message: error.message || "Failed to update testimonial" };
+      return { message: error.message || API_MESSAGES.UPDATE_FAILED };
     }
   }
 
@@ -120,7 +121,7 @@ export class TestimonialController extends Controller {
   @Delete("{id}")
   @SuccessResponse(200, "Testimonial deleted successfully")
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
-  @Response<ErrorMessageResponse>(400, "Invalid testimonial id supplied")
+  @Response<ErrorMessageResponse>(400, API_MESSAGES.DELETE_FAILED)
   public async deleteTestimonial(@Path() id?: string): Promise<SuccessMessageResponse | ErrorMessageResponse> {
     try {
       if (!id) {
@@ -130,7 +131,7 @@ export class TestimonialController extends Controller {
       return { message: "Testimonial deleted successfully" };
     } catch (error: any) {
       this.setStatus(400);
-      return { message: error.message || "Failed to delete testimonial" };
+      return { message: error.message || API_MESSAGES.DELETE_FAILED };
     }
   }
 }

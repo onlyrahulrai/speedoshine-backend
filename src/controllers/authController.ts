@@ -39,6 +39,7 @@ import {
   FieldValidationError,
   SuccessMessageResponse,
 } from "../types/schema/Common";
+import { API_MESSAGES } from "../constraints/common";
 
 @Route("auth")
 @Tags("Auth")
@@ -67,7 +68,7 @@ export class AuthController extends Controller {
       return user as any;
     } catch (error: any) {
       this.setStatus(400);
-      return { message: error?.message || "Failed to login" };
+      return { message: error?.message || API_MESSAGES.LOGIN_FAILED };
     }
   }
 
@@ -97,7 +98,7 @@ export class AuthController extends Controller {
     } catch (error: any) {
       console.error("Registration error:", error);
       this.setStatus(400);
-      return { message: error?.message || "Failed to register user" };
+      return { message: error?.message || API_MESSAGES.REGISTER_FAILED };
     }
   }
 
@@ -127,7 +128,7 @@ export class AuthController extends Controller {
       return { message: "Password reset instructions sent successfully" };
     } catch (error: any) {
       this.setStatus(400);
-      return { message: error?.message || "Failed to request password reset" };
+      return { message: error?.message || API_MESSAGES.PASSWORD_RESET_FAILED };
     }
   }
 
@@ -166,7 +167,7 @@ export class AuthController extends Controller {
       this.setStatus(400);
 
       return {
-        message: error?.message || "Failed to resend verification email",
+        message: error?.message || API_MESSAGES.FETCH_FAILED,
       };
     }
   }
@@ -197,7 +198,7 @@ export class AuthController extends Controller {
       return { message: "Password has been reset successfully" };
     } catch (error: any) {
       this.setStatus(400);
-      return { message: error?.message || "Invalid or expired reset token" };
+      return { message: error?.message || API_MESSAGES.PASSWORD_RESET_FAILED };
     }
   }
 
@@ -215,7 +216,7 @@ export class AuthController extends Controller {
       return { message: "Email verified successfully" };
     } catch (error: any) {
       this.setStatus(400);
-      return { message: error?.message || "Invalid verification token" };
+      return { message: error?.message || API_MESSAGES.VERIFY_EMAIL_FAILED };
     }
   }
 
@@ -241,7 +242,7 @@ export class AuthController extends Controller {
       return { message: "Phone number verified successfully" };
     } catch (error: any) {
       this.setStatus(400);
-      return { message: error?.message || "Phone verification failed" };
+      return { message: error?.message || API_MESSAGES.VERIFY_PHONE_FAILED };
     }
   }
 
@@ -267,7 +268,7 @@ export class AuthController extends Controller {
       return { message: "Verification OTP has been resent" };
     } catch (error: any) {
       this.setStatus(400);
-      return { message: error?.message || "Failed to resend Verification OTP" };
+      return { message: error?.message || API_MESSAGES.OTP_FAILED };
     }
   }
 
