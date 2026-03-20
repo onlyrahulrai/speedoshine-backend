@@ -12,93 +12,143 @@ import {
   SuccessResponse,
   Response,
   Query,
+  Middlewares,
 } from "tsoa";
 import * as UserService from "../services/userService";
 import {
   UserListResponse,
-  UserRequest,
-  UserResponse,
+  CreatUserRequest,
+  UpdateUserRequest,
+  UserDetailsResponse,
 } from "../types/schema/User";
 import {
   ErrorMessageResponse,
-  FieldValidationError,
   SuccessMessageResponse,
+  AccessDeniedErrorMessageResponse,
+  FieldValidationError
 } from "../types/schema/Common";
 import { AuthenticationRequiredResponse } from "../types/schema/Auth";
+import { API_MESSAGES } from "../constraints/common";
+import { PERMISSIONS } from "../constraints/permissions";
+import { requirePermission } from "../middleware/requirePermission";
 
 @Route("users")
 @Tags("User")
 export class UserController extends Controller {
+
+  /** Get all users with pagination */
   @Security("jwt")
   @Get("/")
-  @SuccessResponse<UserListResponse>(
+  @Middlewares(requirePermission(PERMISSIONS.USER_READ))
+  @SuccessResponse(
     200,
     "List of users retrieved successfully"
   )
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
-  @Response<ErrorMessageResponse>(400, "Invalid request")
+  @Response<AccessDeniedErrorMessageResponse>(403, "Access denied")
+  @Response<ErrorMessageResponse>(400, API_MESSAGES.FETCH_LIST_FAILED)
   public async getUsers(
-    @Query() page?: number,
-    @Query() limit?: number,
-    @Query() search?: string,
-  ): Promise<UserListResponse> {
-    return await UserService.getAllUsers(page, limit, search);
+    @Query() page: number = 1,
+    @Query() limit: number = 10,
+    @Query() search: string = "",
+  ): Promise<UserListResponse | ErrorMessageResponse> {
+    try {
+      return await UserService.getAllUsers(page, limit, search) as unknown as UserListResponse;
+    } catch (error: any) {
+      this.setStatus(400);
+      return { message: error.message || API_MESSAGES.FETCH_LIST_FAILED };
+    }
   }
 
+  /** Get a single user by ID */
   @Security("jwt")
-  @Get("/assessments/summary")
-  @SuccessResponse<UserListResponse>(
+  @Get("/{id}")
+  @Middlewares(requirePermission(PERMISSIONS.USER_READ))
+  @SuccessResponse(
     200,
-    "User assessment summaries retrieved successfully"
+    "User retrieved successfully"
   )
-  @Response<AuthenticationRequiredResponse>(401, "Authentication is required to access this resource")
-  @Response<ErrorMessageResponse>(400, "Invalid request parameters")
-  public async getUsersAssessmentSummary(
-    @Query() page?: number,
-    @Query() limit?: number
-  ): Promise<UserListResponse> {
-    return await UserService.getUserAssessmentSummary({ page, limit });
-  }
-
-
-  @Security("jwt")
-  @Get("{id}")
-  @SuccessResponse<UserResponse>(200, "User retrieved successfully")
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
-  @Response<ErrorMessageResponse>(400, "Invalid user id supplied")
-  public async getUser(@Path() id?: string): Promise<UserResponse | null> {
-    return UserService.getUserById(id);
+  @Response<AccessDeniedErrorMessageResponse>(403, "Access denied")
+  @Response<ErrorMessageResponse>(400, API_MESSAGES.FETCH_FAILED)
+  public async getUser(
+    @Path() id: string
+  ): Promise<UserDetailsResponse | ErrorMessageResponse> {
+    try {
+      return await UserService.getUserById(id) as unknown as UserDetailsResponse;
+    } catch (error: any) {
+      this.setStatus(400);
+      return { message: error.message || API_MESSAGES.FETCH_FAILED };
+    }
   }
 
+  /** Create a new user */
   @Security("jwt")
   @Post("/")
-  @SuccessResponse<UserResponse>(201, "User created successfully")
-  @Response<FieldValidationError>(422, "Validation error")
-  @Response<ErrorMessageResponse>(400, "Invalid request parameters")
-  public async createUser(@Body() body?: UserRequest): Promise<UserResponse> {
-    return UserService.createUser(body);
+  @Middlewares(requirePermission(PERMISSIONS.USER_CREATE))
+  @SuccessResponse(
+    201,
+    "User created successfully"
+  )
+  @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+  @Response<AccessDeniedErrorMessageResponse>(403, "Access denied")
+  @Response<FieldValidationError>(422, "Validation Failed")
+  @Response<ErrorMessageResponse>(400, API_MESSAGES.CREATE_FAILED)
+  public async createUser(
+    @Body() body: CreatUserRequest
+  ): Promise<UserDetailsResponse | ErrorMessageResponse | FieldValidationError> {
+    try {
+      return await UserService.createUser(body) as unknown as UserDetailsResponse;
+    } catch (error: any) {
+      this.setStatus(400);
+      return { message: error.message || API_MESSAGES.CREATE_FAILED };
+    }
   }
 
+  /** Update an existing user */
   @Security("jwt")
-  @Put("{id}")
-  @SuccessResponse<UserResponse>(200, "User updated successfully")
-  @Response<FieldValidationError>(422, "Validation error")
-  @Response<ErrorMessageResponse>(400, "Invalid request parameters")
+  @Put("/{id}")
+  @Middlewares(requirePermission(PERMISSIONS.USER_UPDATE))
+  @SuccessResponse(
+    200,
+    "User updated successfully"
+  )
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+  @Response<AccessDeniedErrorMessageResponse>(403, "Access denied")
+  @Response<ErrorMessageResponse>(400, API_MESSAGES.UPDATE_FAILED)
+  @Response<FieldValidationError>(422, "Validation Failed")
   public async updateUser(
-    @Path() id?: string,
-    @Body() body?: UserRequest
-  ): Promise<UserResponse> {
-    return UserService.updateUser(id, body);
+    @Path() id: string,
+    @Body() body: UpdateUserRequest
+  ): Promise<UserDetailsResponse | ErrorMessageResponse | FieldValidationError> {
+    try {
+      return await UserService.updateUser(id, body) as unknown as UserDetailsResponse;
+    } catch (error: any) {
+      this.setStatus(400);
+      return { message: error.message || API_MESSAGES.UPDATE_FAILED };
+    }
   }
 
+  /** Delete a user by ID */
   @Security("jwt")
-  @Delete("{id}")
-  @SuccessResponse<SuccessMessageResponse>(200, "User deleted successfully")
+  @Delete("/{id}")
+  @Middlewares(requirePermission(PERMISSIONS.USER_DELETE))
+  @SuccessResponse(
+    200,
+    "User deleted successfully"
+  )
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
-  @Response<ErrorMessageResponse>(400, "Invalid user id supplied")
-  public async deleteUser(@Path() id: string): Promise<SuccessMessageResponse> {
-    await UserService.deleteUser(id);
-    return { message: "User deleted successfully" };
+  @Response<AccessDeniedErrorMessageResponse>(403, "Access denied")
+  @Response<ErrorMessageResponse>(400, API_MESSAGES.DELETE_FAILED)
+  public async deleteUser(
+    @Path() id: string
+  ): Promise<SuccessMessageResponse | ErrorMessageResponse> {
+    try {
+      await UserService.deleteUser(id);
+      return { message: "User deleted successfully" };
+    } catch (error: any) {
+      this.setStatus(400);
+      return { message: error.message || API_MESSAGES.DELETE_FAILED };
+    }
   }
 }

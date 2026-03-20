@@ -8,9 +8,7 @@ export const validateRegister = async (values: any) => {
   // Custom email, string validators
   errors = validateEmail(errors, values);
   validatePhone(errors, values);
-  validateString(errors, values, "firstName", { required: true });
-  validateString(errors, values, "lastName", { required: true });
-  validateString(errors, values, "age", { required: true });
+  validateString(errors, values, "name", { required: true });
   validateString(errors, values, "password", { required: true, minLength: 6 });
   validateString(errors, values, "confirmPassword", {
     field: "Confirm Password",
@@ -26,12 +24,20 @@ export const validateRegister = async (values: any) => {
     errors.confirmPassword = "Passwords do not match.";
   }
 
-  const existingUser = await User.findOne({
-    email: values.email,
+  const existingEmailUser = await User.findOne({
+    email: values.email
   });
 
-  if (existingUser) {
+  const existingPhoneUser = await User.findOne({
+    phone: values.phone
+  });
+
+  if (existingEmailUser) {
     errors.email = "This email is already in use";
+  }
+
+  if (existingPhoneUser) {
+    errors.phone = "This phone number is already in use";
   }
 
   return errors;
@@ -77,14 +83,27 @@ export const validateRequestResetPasswordConfirm = async (values: any) => {
   return errors;
 };
 
-export const validateEditProfile = (values: any) => {
+export const validateEditProfile = async (userId: string, values: Record<string, any>) => {
   let errors = validateEmail({}, values);
-  validateString(errors, values, "firstName", { required: true });
-  validateString(errors, values, "lastName", { required: true });
-  validateString(errors, values, "age", { required: true });
+  validateString(errors, values, "name", { required: true });
+  validatePhone(errors, values);
 
-  if (values.phone?.trim()) {
-    validatePhone(errors, values);
+  const existingEmailUser = await User.findOne({
+    email: values.email,
+    _id: { $ne: userId }
+  });
+
+  const existingPhoneUser = await User.findOne({
+    phone: values.phone,
+    _id: { $ne: userId }
+  });
+
+  if (existingEmailUser) {
+    errors.email = "This email is already in use";
+  }
+
+  if (existingPhoneUser) {
+    errors.phone = "This phone number is already in use";
   }
 
   return errors;
@@ -121,6 +140,23 @@ export const validateChangePassword = async (values: any, id: number) => {
       errors.oldPassword = "Password update failed. Please verify your current password.";
     }
   }
+
+  return errors;
+};
+
+export const validateVerifyPhone = (values: any) => {
+  let errors: Record<string, string> = {};
+
+  validatePhone(errors, values);
+  validateString(errors, values, "otp", { required: true, minLength: 6 });
+
+  return errors;
+};
+
+export const validateResendPhoneOtp = (values: any) => {
+  let errors: Record<string, string> = {};
+
+  validatePhone(errors, values);
 
   return errors;
 };

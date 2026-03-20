@@ -23,7 +23,7 @@ import {
   BlogListResponse
 } from "../types/schema/Blog";
 import { AuthenticationRequiredResponse } from "../types/schema/Auth";
-import { AccessDeniedErrorMessageResponse, ErrorMessageResponse, ErrorResponse, ValidateError } from "../types/schema/Common";
+import { AccessDeniedErrorMessageResponse, ErrorMessageResponse, FieldValidationError } from "../types/schema/Common";
 import { API_MESSAGES } from "../constraints/common";
 import { PERMISSIONS } from "../constraints/permissions";
 import { requirePermission } from "../middleware/requirePermission";
@@ -39,7 +39,7 @@ export class BlogController extends Controller {
     "List of blogs retrieved successfully"
   )
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
-  @Response<ErrorResponse>(400, API_MESSAGES.FETCH_LIST_FAILED)
+  @Response<ErrorMessageResponse>(400, API_MESSAGES.FETCH_LIST_FAILED)
   public async getBlogs(
     @Request() req: any,
     @Query() page: number = 1,
@@ -60,7 +60,7 @@ export class BlogController extends Controller {
     "Blog retrieved successfully"
   )
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
-  @Response<ErrorResponse>(400, API_MESSAGES.FETCH_FAILED)
+  @Response<ErrorMessageResponse>(400, API_MESSAGES.FETCH_FAILED)
   public async getBlogById(
     @Request() req: any,
     @Path() blogIdOrSlug: string
@@ -80,11 +80,11 @@ export class BlogController extends Controller {
   @SuccessResponse(201, "Blog created successfully")
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   @Response<AccessDeniedErrorMessageResponse>(403, "Access denied")
-  @Response<ValidateError>(422, "Validation Failed")
-  @Response<ErrorResponse>(400, API_MESSAGES.CREATE_FAILED)
+  @Response<FieldValidationError>(422, "Validation Failed")
+  @Response<ErrorMessageResponse>(400, API_MESSAGES.CREATE_FAILED)
   public async createBlog(
     @Body() body: CreateBlogRequest
-  ): Promise<BlogDetailsResponse | ErrorResponse | ValidateError> {
+  ): Promise<BlogDetailsResponse | ErrorMessageResponse | FieldValidationError> {
     try {
       const fields = validateManageBlog(body);
 
@@ -111,7 +111,7 @@ export class BlogController extends Controller {
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   @Response<AccessDeniedErrorMessageResponse>(403, "Access denied")
   @Response<ErrorMessageResponse>(400, API_MESSAGES.UPDATE_FAILED)
-  @Response<ValidateError>(422, "Validation Failed")
+  @Response<FieldValidationError>(422, "Validation Failed")
   public async updateBlog(
     @Path() blogId: string,
     @Body() body: UpdateBlogRequest

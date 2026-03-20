@@ -53,19 +53,33 @@ export const getTransactions = async (
 };
 
 export const getTransactionById = async (id: string) => {
-    if (!Types.ObjectId.isValid(id)) return null;
+    try {
+        if (!Types.ObjectId.isValid(id)) return null;
 
-    return await TransactionModel.findById(id)
-        .populate("user", "name email phone")
-        .lean();
+        const transaction = await TransactionModel.findById(id)
+            .populate("user", "name email phone")
+            .lean();
+
+        if (!transaction) {
+            throw new Error("Transaction not found");
+        }
+
+        return transaction;
+    } catch (error: any) {
+        throw new Error(error.message || "Failed to fetch transaction");
+    }
 };
 
 export const getTransactionsByUser = async (userId: string) => {
-    if (!Types.ObjectId.isValid(userId)) return [];
+    try {
+        if (!Types.ObjectId.isValid(userId)) return [];
 
-    return await TransactionModel.find({ user: new Types.ObjectId(userId) })
-        .populate("user", "name email phone")
-        .lean();
+        return await TransactionModel.find({ user: new Types.ObjectId(userId) })
+            .populate("user", "name email phone")
+            .lean();
+    } catch (error: any) {
+        throw new Error(error.message || "Failed to fetch transactions by user");
+    }
 };
 
 export const createTransaction = async (userId: string, values: Record<string, any>) => {
@@ -127,21 +141,41 @@ export const createTransaction = async (userId: string, values: Record<string, a
 };
 
 export const updateTransaction = async (id: string, body: TransactionRequest) => {
-    if (!Types.ObjectId.isValid(id)) return null;
+    try {
+        if (!Types.ObjectId.isValid(id)) return null;
 
-    return await TransactionModel.findByIdAndUpdate(id, body, {
-        new: true,
-        runValidators: true,
-    }).select("-__v")
+        const updatedTransaction = await TransactionModel.findByIdAndUpdate(id, body, {
+            new: true,
+            runValidators: true,
+        }).select("-__v");
+
+        if (!updatedTransaction) {
+            throw new Error("Transaction not found");
+        }
+
+        return updatedTransaction;
+    } catch (error: any) {
+        throw new Error(error.message || "Failed to update transaction");
+    }
 };
 
 export const cancelTransaction = async (id: string) => {
-    if (!Types.ObjectId.isValid(id)) return null;
+    try {
+        if (!Types.ObjectId.isValid(id)) return null;
 
-    return await TransactionModel.findByIdAndUpdate(id, {
-        transaction_status: TransactionStatus.CANCELLED,
-    }, {
-        new: true,
-        runValidators: true,
-    }).select("-__v")
+        const cancelledTransaction = await TransactionModel.findByIdAndUpdate(id, {
+            transaction_status: TransactionStatus.CANCELLED,
+        }, {
+            new: true,
+            runValidators: true,
+        }).select("-__v");
+
+        if (!cancelledTransaction) {
+            throw new Error("Transaction not found");
+        }
+
+        return cancelledTransaction;
+    } catch (error: any) {
+        throw new Error(error.message || "Failed to cancel transaction");
+    }
 };

@@ -7,11 +7,14 @@ import User from "../models/User";
 import Role from "../models/Role";
 import { TokenBlacklist } from "../models/TokenBlacklist";
 import { v4 as uuidV4 } from "uuid";
+import OTPGenerator from "otp-generator";
+import OTP from "../models/OTP";
 
-const myQueue = new Queue("DD-EmailTask");
+const myEmailQueue = new Queue("SS-EmailTask");
+const myCommonQueue = new Queue("SS-CommonTask");
 
 export const registerUser = async (data: RegisterInput) => {
-  const { firstName, lastName, email, phone, occupation, organization, age, password } = data;
+  const { name, email, phone, password } = data;
 
   const hashedPassword = await bcrypt.hash(password, 10);
 
@@ -25,18 +28,14 @@ export const registerUser = async (data: RegisterInput) => {
     }
 
     const user = await new User({
-      firstName,
-      lastName,
+      name,
       email,
       phone,
-      occupation,
-      organization,
-      age,
       password: hashedPassword,
-      role: role._id,
+      roles: [role._id],
     }).save();
 
-    const { password, ...userData } = user.toObject();
+    const { password, __v, ...userData } = user.toObject();
 
     const verificationToken = generateToken(
       {
@@ -48,7 +47,7 @@ export const registerUser = async (data: RegisterInput) => {
 
     const verifyLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
 
-    await myQueue.add("send-email", {
+    await myEmailQueue.add("send-email", {
       to: userData.email,
       subject: "Verify Your Email Address",
       html: `
@@ -70,6 +69,31 @@ export const registerUser = async (data: RegisterInput) => {
       jobId: `verify-email-${uuidV4().split("-")[0]}`,
     });
 
+    let otp = "123456";
+
+    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    if (process.env.DEBUG === "false") {
+      otp = await OTPGenerator.generate(6, {
+        upperCaseAlphabets: false,
+        lowerCaseAlphabets: false,
+        specialChars: false,
+      })
+
+      await myCommonQueue.add("send-verification-otp", { otp, contacts: `${phone}` });
+    }
+
+    // Hash OTP before saving
+    const hashedOtp = await bcrypt.hash(otp, 10);
+
+    // Save OTP to separate collection
+    await OTP.findOneAndUpdate(
+      { identifier: phone, type: "signup" },
+      { otp: hashedOtp, expiresAt: otpExpiresAt },
+      { upsert: true, new: true }
+    );
+
+
     return userData;
   } catch (error: any) {
     throw new Error(error.message || "Failed to register user.");
@@ -77,78 +101,99 @@ export const registerUser = async (data: RegisterInput) => {
 };
 
 export const loginUser = async (email: string, password: string) => {
-  const user = await User.findOne({
-    email,
-  }).populate([
-    {
-      path: "role",
-      select: "name",
-    },
-  ]);
+  try {
+    const user = await User.findOne({
+      email,
+    }).populate([
+      {
+        path: "roles",
+        select: "name",
+      },
+    ]);
 
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    throw new Error("Invalid credentials");
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      throw new Error("Invalid credentials");
+    }
+
+    const payload = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      roles: user.roles,
+    };
+
+    const access = generateToken(payload, "24h");
+    const refresh = generateToken(payload, "7d");
+
+    const { password: userPassword, __v, ...userData } = user.toObject();
+
+    return { ...userData, access, refresh };
+  } catch (error: any) {
+    throw new Error(error.message || "Login failed");
   }
-
-  const { password: _, ...userData } = user.toObject();
-
-  const payload = {
-    _id: user._id,
-    firstName: user.firstName,
-    lastName: user.lastName,
-    email: user.email,
-    phone: user.phone,
-    username: user.username,
-    role: user.role,
-  };
-
-  const access = generateToken(payload, "24h");
-  const refresh = generateToken(payload, "7d");
-
-  return { ...userData, access, refresh };
 };
 
-export const editUserProfile = async (_id: string, data: EditProfileInput) =>
-  await User.findByIdAndUpdate(_id, { $set: data }, { new: true });
+export const editUserProfile = async (_id: string, data: EditProfileInput) => {
+  try {
+    return await User.findByIdAndUpdate(_id, { $set: data }, { new: true }).select("-password -__v").populate([
+      {
+        path: "roles",
+        select: "name",
+      },
+    ]);
+
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to edit user profile");
+  }
+};
 
 export const changePassword = async (
   _id: string,
   data: {
-    oldPassword: string;
-    newPassword: string;
-    confirmPassword: string;
+    oldPassword?: string;
+    newPassword?: string;
+    confirmPassword?: string;
   }
 ) => {
-  const hashedPassword = await bcrypt.hash(data.newPassword, 10);
+  try {
+    const hashedPassword = await bcrypt.hash(data.newPassword, 10);
 
-  return await User.findByIdAndUpdate(
-    _id,
-    { $set: { password: hashedPassword } },
-    { new: true }
-  );
+    return await User.findByIdAndUpdate(
+      _id,
+      { $set: { password: hashedPassword } },
+      { new: true }
+    ).select("-password -__v");
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to change password");
+  }
 };
 
 export const requestPasswordReset = async (email: string) => {
-  const user = await User.findOne({ email });
+  try {
+    const user = await User.findOne({ email });
 
-  if (!user) {
-    // Avoid user enumeration by returning the same success message
-    throw new Error("If the email address is registered, you will receive a password reset link shortly. Please check your inbox or spam folder. If you don’t receive the email, verify the address or sign up for a new account.");
+    if (!user) {
+      // Avoid user enumeration by returning the same success message
+      throw new Error("If the email address is registered, you will receive a password reset link shortly. Please check your inbox or spam folder. If you don’t receive the email, verify the address or sign up for a new account.");
+    }
+
+    // Generate JWT token with user id and expiration (15 minutes)
+    const token = generateToken({ userId: String(user._id) }, "15m");
+
+    const resetLink = `${process.env.FRONTEND_URL}/confirm-reset-password?token=${token}`;
+
+    // Add email job to the queue
+    await myEmailQueue.add("send-email", {
+      to: email,
+      subject: "Reset Your Password",
+      html: `<p>Click <a href="${resetLink}">here</a> to reset your password.</p>`,
+    });
+
+    return { message: "Reset link sent to your email." };
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to request password reset");
   }
-
-  // Generate JWT token with user id and expiration (15 minutes)
-  const token = generateToken({ userId: String(user._id) }, "15m");
-
-  const resetLink = `${process.env.FRONTEND_URL}/confirm-reset-password?token=${token}`;
-
-  // Add email job to the queue
-  await myQueue.add("send-email", {
-    to: email,
-    subject: "Reset Your Password",
-    html: `<p>Click <a href="${resetLink}">here</a> to reset your password.</p>`,
-  });
-
-  return { message: "Reset link sent to your email." };
 };
 
 export const confirmResetPassword = async (token: string, password: string) => {
@@ -191,25 +236,21 @@ export const confirmResetPassword = async (token: string, password: string) => {
 };
 
 export const getUserDetails = async (userId: string) => {
-  // Find the user and populate role
-  const userInstance = await User.findById(userId).select("-password").populate({
-    path: "role",
-    select: "name",
-  });
+  try {
+    // Find the user and populate role
+    const user = await User.findById(userId).select("-password -__v").populate({
+      path: "roles",
+      select: "name",
+    });
 
-  if (!userInstance) {
-    throw new Error("We couldn’t find an account matching those details.");
+    if (!user) {
+      throw new Error("We couldn’t find an account matching those details.");
+    }
+
+    return user.toObject();
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to fetch user details");
   }
-
-  // ✅ Call your instance method
-  const completedAssessmentsCount = await userInstance.getTotalAssessmentsCompleted();
-
-  // Convert to plain object and add the count
-  const userObject = userInstance.toObject();
-
-  userObject.completedAssessments = completedAssessmentsCount;
-
-  return userObject;
 };
 
 export const verifyEmail = async (token: string) => {
@@ -224,10 +265,10 @@ export const verifyEmail = async (token: string) => {
       userId: string;
     };
 
-    // Update user isVerified to true
+    // Update user verified to true
     const user = await User.findByIdAndUpdate(
       payload.userId,
-      { isVerified: true },
+      { isEmailVerified: true },
       { new: true }
     );
 
@@ -267,7 +308,7 @@ export const resendVerificationEmail = async (user: any) => {
 
     const verifyLink = `${process.env.FRONTEND_URL}/verify-email?token=${verificationToken}`;
 
-    await myQueue.add("send-email", {
+    await myEmailQueue.add("send-email", {
       to: user.email,
       subject: "Verify Your Email Address",
       html: `
@@ -288,7 +329,7 @@ export const resendVerificationEmail = async (user: any) => {
     });
 
     return { message: "Account verification link has been sent" };
-  } catch (error) {
+  } catch (error: any) {
     throw new Error(
       error.message ||
       "❌ We couldn’t send the verification email. Please check your email address or try again shortly."
@@ -316,5 +357,104 @@ export const logout = async (req: any) => {
   } catch (error) {
     console.error("Logout service error:", error);
     throw error; // re-throw to let controller handle response
+  }
+};
+
+export const verifyPhoneOtp = async (phone?: string, otp?: string, type: string = "signup") => {
+  try {
+    if (type === "signup") {
+      const user = await User.findOne({ phone });
+
+      if (!user) {
+        throw new Error("No account associated with this phone number.");
+      }
+
+      if (user.isPhoneVerified) {
+        throw new Error("Phone number is already verified.");
+      }
+    }
+
+    // Find the current OTP record
+    const otpRecord = await OTP.findOne({ identifier: phone, type });
+
+    if (!otpRecord) {
+      throw new Error("OTP has expired or doesn't exist. Please request a new one.");
+    }
+
+    // Check attempts (limiting to 5)
+    if (otpRecord.attempts >= 5) {
+      throw new Error("Too many failed attempts. Please request a new OTP.");
+    }
+
+    // Compare hashed OTP
+    const isValid = await bcrypt.compare(otp, otpRecord.otp);
+
+    if (!isValid) {
+      // Increment attempts on failure
+      otpRecord.attempts += 1;
+      await otpRecord.save();
+      throw new Error("Invalid OTP");
+    }
+
+    if (type === "signup") {
+      const user = await User.findOne({ phone });
+      if (user) {
+        user.isPhoneVerified = true;
+        await user.save();
+      }
+    }
+
+    // Delete the OTP record once verified
+    await OTP.deleteOne({ _id: otpRecord._id });
+
+    return { message: "Phone number verified successfully" };
+  } catch (error: any) {
+    throw new Error(error.message || "Phone verification failed");
+  }
+};
+
+export const resendPhoneOtp = async (phone?: string, type: string = "signup") => {
+  try {
+    if (type === "signup") {
+      const user = await User.findOne({ phone });
+
+      if (!user) {
+        throw new Error("No account associated with this phone number.");
+      }
+
+      if (user.isPhoneVerified) {
+        throw new Error("Phone number is already verified.");
+      }
+    }
+
+    let otp = "123456";
+
+    const otpExpiresAt = new Date(Date.now() + 5 * 60 * 1000); // 5 minutes matching TTL
+
+    if (process.env.DEBUG === "false") {
+      otp = await OTPGenerator.generate(6, {
+        upperCaseAlphabets: false,
+        lowerCaseAlphabets: false,
+        specialChars: false,
+      });
+
+      await myCommonQueue.add("send-verification-otp", {
+        otp,
+        contacts: `${phone}`,
+      });
+    }
+
+    // Hash OTP before saving
+    const hashedOtp = await bcrypt.hash(otp, 10);
+
+    await OTP.findOneAndUpdate(
+      { identifier: phone, type },
+      { otp: hashedOtp, expiresAt: otpExpiresAt, attempts: 0 },
+      { upsert: true, new: true }
+    );
+
+    return { message: "Verification OTP has been resent" };
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to resend Verification OTP");
   }
 };

@@ -1,8 +1,5 @@
 import "reflect-metadata";
-
-import dotenv from "dotenv";
-dotenv.config();
-
+import "dotenv/config";
 import express, { Request, Response, NextFunction } from "express";
 import "colors";
 import { createServer } from "node:http";
@@ -10,6 +7,7 @@ import cors from "cors";
 import swaggerUi from "swagger-ui-express";
 import swaggerDocument from "../dist/swagger.json" assert { type: "json" };
 import "./workers";
+import { serverAdapter as bullBoardAdapter } from "./jobs/bullBoard";
 import "./helper/utils/promiseAny";
 import { expressAuthentication } from "./auth/expressAuthentication";
 import optionalAuth from "./middleware/optionalAuth";
@@ -149,6 +147,7 @@ app.use("/api", apiRouter);
    7. SWAGGER
    ===================================================== */
 app.use("/api/docs", swaggerUi.serve, swaggerUi.setup(swaggerDocument));
+app.use("/admin/queues", bullBoardAdapter.getRouter());
 
 
 const RECHARGE_CONFIG = {

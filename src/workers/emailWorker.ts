@@ -2,7 +2,7 @@ import { Worker } from "bullmq";
 import { sendMail } from "../helper/utils/mailer";
 
 const worker = new Worker(
-  "DD-EmailTask",
+  "SS-EmailTask",
   async (job: { name: string; data: any }) => {
     console.log("----- Job Executed -----")
 
@@ -14,16 +14,16 @@ const worker = new Worker(
   },
   {
     connection: {
-      host: "127.0.0.1",
-      port: 6379,
+      host: process.env.REDIS_HOST,
+      port: Number(process.env.REDIS_PORT),
     },
   }
 );
 
-worker.on("completed", (job:{data:any}) => {
+worker.on("completed", (job: { data: any }) => {
   console.log(`✅ Email sent to ${job.data.to}`);
 });
 
-worker.on("failed", (job:{data:any}, err:any) => {
+worker.on("failed", (job: { data: any }, err: any) => {
   console.error(`❌ Failed to send email to ${job?.data?.to}:`, err);
 });

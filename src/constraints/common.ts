@@ -7,8 +7,10 @@ export const API_MESSAGES = {
 };
 
 export const USER_ROLES = {
+    SUPER_ADMIN: "Super Admin",
     ADMIN: "Admin",
     USER: "User",
-    COUNSELLOR: "Counsellor",
-    SUPER_ADMIN: "Super Admin",
+    DEALER: "Dealer",
+    INVESTOR: "Investor",
+    EMPLOYEE: "Employee",
 };

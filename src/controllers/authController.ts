@@ -19,6 +19,8 @@ import {
   validateRegister,
   validateRequestResetPassword,
   validateRequestResetPasswordConfirm,
+  validateVerifyPhone,
+  validateResendPhoneOtp,
 } from "../helper/validators/auth";
 import {
   AuthenticationRequiredResponse,
@@ -28,8 +30,10 @@ import {
   RegisterInput,
   RequestResetPasswordConfirmInput,
   VerifyEmailInput,
+  VerifyPhoneInput,
+  ResendPhoneOtpInput,
 } from "../types/schema/Auth";
-import { UserResponse } from "../types/schema/User";
+import { UserDetailsResponse } from "../types/schema/User";
 import {
   ErrorMessageResponse,
   FieldValidationError,
@@ -47,13 +51,12 @@ export class AuthController extends Controller {
     @Body() body: LoginInput
   ): Promise<AuthUserResponse | FieldValidationError | ErrorMessageResponse> {
     try {
-      const errors = await validateLogin(body);
+      const fields = await validateLogin(body);
 
-      if (Object.keys(errors).length > 0) {
-        this.setStatus(422); // Unprocessable Entity
+      if (Object.keys(fields).length > 0) {
+        this.setStatus(422);
         return {
-          type: "fields",
-          errors,
+          fields,
         };
       }
 
@@ -61,7 +64,7 @@ export class AuthController extends Controller {
 
       this.setStatus(200);
 
-      return user as any; // merge user details + token
+      return user as any;
     } catch (error: any) {
       this.setStatus(400);
       return { message: error?.message || "Failed to login" };
@@ -69,20 +72,19 @@ export class AuthController extends Controller {
   }
 
   @Post("/register")
-  @SuccessResponse<UserResponse>(201, "User registered successfully")
+  @SuccessResponse<UserDetailsResponse>(201, "User registered successfully")
   @Response<FieldValidationError>(422, "One or more fields failed validation")
   @Response<ErrorMessageResponse>(400, "Invalid request parameters or format")
   public async register(
     @Body() body: RegisterInput
-  ): Promise<UserResponse | FieldValidationError | ErrorMessageResponse> {
+  ): Promise<UserDetailsResponse | FieldValidationError | ErrorMessageResponse> {
     try {
-      const errors = await validateRegister(body);
+      const fields = await validateRegister(body);
 
-      if (Object.keys(errors).length > 0) {
+      if (Object.keys(fields).length > 0) {
         this.setStatus(422); // 422 for validation issues
         return {
-          type: "fields",
-          errors,
+          fields,
         };
       }
 
@@ -109,13 +111,12 @@ export class AuthController extends Controller {
     SuccessMessageResponse | FieldValidationError | ErrorMessageResponse
   > {
     try {
-      const errors = validateRequestResetPassword(body);
+      const fields = validateRequestResetPassword(body);
 
-      if (Object.keys(errors).length > 0) {
+      if (Object.keys(fields).length > 0) {
         this.setStatus(422);
         return {
-          type: "fields",
-          errors,
+          fields,
         };
       }
 
@@ -180,13 +181,12 @@ export class AuthController extends Controller {
     { message: string } | FieldValidationError | ErrorMessageResponse
   > {
     try {
-      const errors = await validateRequestResetPasswordConfirm(body);
+      const fields = await validateRequestResetPasswordConfirm(body);
 
-      if (Object.keys(errors).length > 0) {
+      if (Object.keys(fields).length > 0) {
         this.setStatus(422);
         return {
-          type: "fields",
-          errors,
+          fields,
         };
       }
 
@@ -219,9 +219,61 @@ export class AuthController extends Controller {
     }
   }
 
+  @Post("verify-phone")
+  @SuccessResponse(200, "Phone number verified")
+  @Response<FieldValidationError>(422, "One or more fields failed validation")
+  @Response<ErrorMessageResponse>(400, "Invalid OTP or phone number")
+  public async verifyPhone(
+    @Body() body: VerifyPhoneInput
+  ): Promise<SuccessMessageResponse | FieldValidationError | ErrorMessageResponse> {
+    try {
+      const fields = validateVerifyPhone(body);
+
+      if (Object.keys(fields).length > 0) {
+        this.setStatus(422);
+        return { fields };
+      }
+
+      await AuthService.verifyPhoneOtp(body?.phone, body?.otp, body?.type);
+
+      this.setStatus(200);
+
+      return { message: "Phone number verified successfully" };
+    } catch (error: any) {
+      this.setStatus(400);
+      return { message: error?.message || "Phone verification failed" };
+    }
+  }
+
+  @Post("resend-phone-otp")
+  @SuccessResponse(200, "Verification OTP resent")
+  @Response<FieldValidationError>(422, "One or more fields failed validation")
+  @Response<ErrorMessageResponse>(400, "Failed to resend Verification OTP")
+  public async resendPhoneOtp(
+    @Body() body: ResendPhoneOtpInput
+  ): Promise<SuccessMessageResponse | FieldValidationError | ErrorMessageResponse> {
+    try {
+      const fields = validateResendPhoneOtp(body);
+
+      if (Object.keys(fields).length > 0) {
+        this.setStatus(422);
+        return { fields };
+      }
+
+      await AuthService.resendPhoneOtp(body.phone, body.type);
+
+      this.setStatus(200);
+
+      return { message: "Verification OTP has been resent" };
+    } catch (error: any) {
+      this.setStatus(400);
+      return { message: error?.message || "Failed to resend Verification OTP" };
+    }
+  }
+
   @Security("jwt")
   @Put("edit-profile")
-  @SuccessResponse<UserResponse>(200, "Profile updated successfully")
+  @SuccessResponse<UserDetailsResponse>(200, "Profile updated successfully")
   @Response<ErrorMessageResponse>(400, "Invalid request parameters or format")
   @Response<FieldValidationError>(422, "One or more fields failed validation")
   @Response<AuthenticationRequiredResponse>(
@@ -232,7 +284,7 @@ export class AuthController extends Controller {
     @Request() req: any,
     @Body() body: EditProfileInput
   ): Promise<
-    | UserResponse
+    | UserDetailsResponse
     | ErrorMessageResponse
     | FieldValidationError
     | AuthenticationRequiredResponse
@@ -245,13 +297,12 @@ export class AuthController extends Controller {
         return { message: "Authentication required" };
       }
 
-      const errors = await validateEditProfile(body);
+      const fields = await validateEditProfile(userId, body);
 
-      if (Object.keys(errors).length > 0) {
+      if (Object.keys(fields).length > 0) {
         this.setStatus(422);
         return {
-          type: "fields",
-          errors,
+          fields,
         };
       }
 
@@ -268,7 +319,7 @@ export class AuthController extends Controller {
 
   @Security("jwt")
   @Post("change-password")
-  @SuccessResponse<UserResponse>(200, "Password changed successfully")
+  @SuccessResponse<UserDetailsResponse>(200, "Password changed successfully")
   @Response<ErrorMessageResponse>(400, "Invalid request parameters or format")
   @Response<FieldValidationError>(422, "One or more fields failed validation")
   @Response<AuthenticationRequiredResponse>(
@@ -279,12 +330,12 @@ export class AuthController extends Controller {
     @Request() req: any,
     @Body()
     body: {
-      oldPassword: string;
-      newPassword: string;
-      confirmPassword: string;
+      oldPassword?: string;
+      newPassword?: string;
+      confirmPassword?: string;
     }
   ): Promise<
-    | UserResponse
+    | UserDetailsResponse
     | ErrorMessageResponse
     | FieldValidationError
     | AuthenticationRequiredResponse
@@ -297,13 +348,12 @@ export class AuthController extends Controller {
         return { message: "Authentication required" };
       }
 
-      const errors = await validateChangePassword(body, userId);
+      const fields = await validateChangePassword(body, userId);
 
-      if (Object.keys(errors).length > 0) {
+      if (Object.keys(fields).length > 0) {
         this.setStatus(422); // Correct for validation errors
         return {
-          type: "fields",
-          errors,
+          fields,
         };
       }
 
@@ -320,7 +370,7 @@ export class AuthController extends Controller {
 
   @Security("jwt")
   @Get("user-details")
-  @SuccessResponse<UserResponse>(200, "User details retrieved successfully")
+  @SuccessResponse<UserDetailsResponse>(200, "User details retrieved successfully")
   @Response<ErrorMessageResponse>(400, "Invalid request parameters or format")
   @Response<AuthenticationRequiredResponse>(
     401,
@@ -329,7 +379,7 @@ export class AuthController extends Controller {
   public async getUserDetails(
     @Request() req: any
   ): Promise<
-    UserResponse | AuthenticationRequiredResponse | ErrorMessageResponse
+    UserDetailsResponse | AuthenticationRequiredResponse | ErrorMessageResponse
   > {
     const userId = req.user?._id;
 

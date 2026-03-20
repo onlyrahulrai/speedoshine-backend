@@ -10,21 +10,21 @@ export const sendMail = async ({
   html: string;
 }) => {
   const transporter = nodemailer.createTransport({
-    service: "gmail",
-    secure: true,
-    port: 465,
-    // host: "smtp.ethereal.email",
-    // port: 587,
-    // secure: false,
+    // service: "gmail",
+    // secure: true,
+    // port: 465,
+    host: "smtp.ethereal.email",
+    port: 587,
+    secure: false,
     auth: {
-      user: process.env.REAL_MAIL,
-      pass: process.env.REAL_PASSWORD,
+      user: process.env.FAKE_EMAIL,
+      pass: process.env.FAKE_PASSWORD,
     },
   });
 
   try {
     const info = await transporter.sendMail({
-      from: process.env.REAL_MAIL,
+      from: process.env.FAKE_EMAIL,
       to,
       subject,
       html,

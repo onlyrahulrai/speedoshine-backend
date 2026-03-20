@@ -36,8 +36,6 @@ function extractUrls(value: any, urls: Set<string>) {
 export function imageTrackerPlugin(schema: Schema) {
   schema.pre("save", async function (next) {
     try {
-      console.log("Hello World");
-
       // Skip the Upload model itself
       if ((this.constructor as any).modelName === "Upload") {
         return next();
@@ -48,8 +46,6 @@ export function imageTrackerPlugin(schema: Schema) {
       const urls = new Set<string>();
 
       extractUrls(doc, urls);
-
-      console.log("Urls", doc, urls);
 
       if (urls.size > 0) {
         await Upload.updateMany(
@@ -86,7 +82,6 @@ export function imageTrackerPlugin(schema: Schema) {
       }
       next();
     } catch (error) {
-      console.error("Error in imageTrackerPlugin (update):", error);
       next();
     }
   };

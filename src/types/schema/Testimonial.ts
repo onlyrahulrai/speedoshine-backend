@@ -1,5 +1,4 @@
-export interface TestimonialRequest {
-  _id?: string;
+export interface CreateTestimonialRequest {
   name: string;
   roleOrAge: string;
   message: string;
@@ -8,7 +7,16 @@ export interface TestimonialRequest {
   published?: boolean;
 }
 
-export interface TestimonialResponse {
+export interface UpdateTestimonialRequest {
+  name: string;
+  roleOrAge: string;
+  message: string;
+  type: "testimonial" | "story";
+  rating?: number; // ⭐ added rating
+  published?: boolean;
+}
+
+export interface TestimonialDetailsResponse {
   _id: string;
   name: string;
   roleOrAge: string;
@@ -21,8 +29,10 @@ export interface TestimonialResponse {
 }
 
 export interface TestimonialListResponse {
-  results: TestimonialResponse[];
-  total: number;
   page: number;
   limit: number;
+  total: number;
+  has_next: boolean;
+  has_prev: boolean;
+  results: TestimonialDetailsResponse[];
 }

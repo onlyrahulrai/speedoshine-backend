@@ -1,5 +1,5 @@
-import { ErrorResponse } from "./Common";
-import { UserResponse } from "./User";
+import { ErrorMessageResponse } from "./Common";
+import { UserDetailsResponse } from "./User";
 
 export interface LoginInput {
   email?: any;
@@ -7,13 +7,9 @@ export interface LoginInput {
 }
 
 export interface RegisterInput {
-  firstName?: any;
-  lastName?: any;
+  name?: any;
   email?: any;
   phone?: any;
-  age?: any;
-  occupation?: any;
-  organization?: any;
   password?: any;
   confirmPassword?: any;
 }
@@ -28,25 +24,28 @@ export interface VerifyEmailInput {
   token: string;
 }
 
+export interface VerifyPhoneInput {
+  phone?: string;
+  otp?: string;
+  type?: string;
+}
+
+export interface ResendPhoneOtpInput {
+  phone?: string;
+  type?: string;
+}
+
 export interface EditProfileInput {
-  firstName?: string;
-  lastName?: string;
-  username?: string;
+  name?: string;
   email?: string;
   phone?: string;
-  age?: number;
-  address?: any;
   profile?: any;
-  bio?: string;
-  occupation?: string;
-  organization?: string;
 }
 
-export interface AuthUserResponse extends UserResponse {
+export interface AuthUserResponse extends UserDetailsResponse {
   access: string;
   refresh: string;
-  __v?: number;
 }
 
-export interface AuthenticationRequiredResponse extends ErrorResponse {
+export interface AuthenticationRequiredResponse extends ErrorMessageResponse {
 }

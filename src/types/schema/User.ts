@@ -1,38 +1,39 @@
-export interface UserRequest {
-  _id?: string;
-  firstName?: string;
-  lastName?: string;
+import mongoose from "mongoose";
+
+export interface CreatUserRequest {
+  name?: string;
   email?: string;
   phone?: string;
-  age?: number;
-  occupation?: string;
-  organization?: string;
   password?: string;
   isActive?: boolean;
 }
 
-export interface UserResponse {
-  _id?: string; // MongoDB ObjectId as string
-  firstName: string;
-  lastName: string;
-  name?: string;
-  username?: any;
+export interface UpdateUserRequest extends CreatUserRequest { }
+
+export interface UserDetailsResponse {
+  _id?: string | mongoose.Types.ObjectId; // MongoDB ObjectId as string
+  name: string;
   email: string;
   phone?: string;
-  age?: number;
-  occupation?: string;
-  organization?: string;
-  address?: any;
   profile?: any;
-  bio?: any;
   isActive?: boolean;
-  isVerified?: boolean;
-  role?: any;
+  isEmailVerified?: boolean;
+  isPhoneVerified?: boolean;
+  roles?: any;
   createdAt: Date;
   updatedAt: Date;
-  __V?: string
 }
 
 export interface UserListResponse {
-  results: UserResponse[];
+  page: number;
+  limit: number;
+  total: number;
+  has_next: boolean;
+  has_prev: boolean;
+  results: UserDetailsResponse[];
+}
+
+export interface AuthUserResponse extends UserDetailsResponse {
+  access: string;
+  refresh: string;
 }

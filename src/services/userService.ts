@@ -1,63 +1,69 @@
 import User, { IUser } from "../models/User";
 import bcrypt from "bcryptjs";
-
-interface PaginatedResponse<T> {
-  page: number;
-  limit: number;
-  has_next: boolean;
-  has_prev: boolean;
-  total: number;
-  results: Partial<T>[];
-}
+import { UserListResponse, UserDetailsResponse } from "../types/schema/User";
 
 export const getAllUsers = async (
   page: number = 1,
   limit: number = 10,
   search?: string
-): Promise<PaginatedResponse<IUser>> => {
-  const effectivePage = Math.max(1, page);
-  const effectiveLimit = Math.max(1, Math.min(limit, 100));
+): Promise<UserListResponse> => {
+  try {
+    const effectivePage = Math.max(1, page);
+    const effectiveLimit = Math.max(1, Math.min(limit, 100));
 
-  const skip = (effectivePage - 1) * effectiveLimit;
+    const skip = (effectivePage - 1) * effectiveLimit;
 
-  // total count for pagination
-  const total = await User.countDocuments();
+    // total count for pagination
+    const total = await User.countDocuments();
 
-  const match = search
-    ? {
+    const match = search
+      ? {
         $or: [
-          { firstName: { $regex: search, $options: "i" } },
-          { lastName: { $regex: search, $options: "i" } },
+          { name: { $regex: search, $options: "i" } },
           { email: { $regex: search, $options: "i" } },
-          { occupation: { $regex: search, $options: "i" } },
-          { organization: { $regex: search, $options: "i" } },
+          { phone: { $regex: search, $options: "i" } },
         ],
       }
-    : {};
+      : {};
 
-  // fetch paginated users
-  const results = await User.find(match)
-    .select("-password")
-    .sort("-createdAt")
-    .skip(skip)
-    .limit(effectiveLimit)
-    .lean();
+    // fetch paginated users
+    const results = await User.find(match)
+      .select("-password")
+      .sort("-createdAt")
+      .skip(skip)
+      .limit(effectiveLimit)
+      .lean();
 
-  return {
-    page: effectivePage,
-    limit: effectiveLimit,
-    total,
-    has_next: skip + results.length < total,
-    has_prev: effectivePage > 1,
-    results,
-  };
+    return {
+      page: effectivePage,
+      limit: effectiveLimit,
+      total,
+      has_next: skip + results.length < total,
+      has_prev: effectivePage > 1,
+      results: results as unknown as UserDetailsResponse[],
+    };
+  } catch (error: any) {
+    throw new Error(error.message || "Failed to fetch users");
+  }
 };
-
 
 export const getUserById = async (
   id: string
-): Promise<Partial<IUser> | null> => {
-  return await User.findById(id).select("-password").lean();
+): Promise<UserDetailsResponse | null> => {
+  try {
+    const user = await User.findById(id).select("-password").lean();
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    return user as unknown as UserDetailsResponse;
+  } catch (error: any) {
+    if (error.name === "CastError") {
+      throw new Error("Invalid User ID format");
+    }
+    throw new Error(error.message || "Failed to fetch user");
+  }
 };
 
 export const createUser = async (data: Partial<IUser>): Promise<IUser> => {
@@ -66,11 +72,6 @@ export const createUser = async (data: Partial<IUser>): Promise<IUser> => {
       const saltRounds = parseInt(process.env.SALT_ROUNDS || "10", 10);
       const salt = await bcrypt.genSalt(saltRounds);
       data.password = await bcrypt.hash(data.password, salt);
-    }
-
-    // Set default values
-    if (data.isVerified === undefined) {
-      data.isVerified = true;
     }
 
     const user = new User(data);
@@ -85,99 +86,51 @@ export const updateUser = async (
   id: string,
   data: Partial<IUser>
 ): Promise<Partial<IUser> | null> => {
-  if (data.password) {
-    const salt = await bcrypt.genSalt(10);
-    data.password = await bcrypt.hash(data.password, salt);
-  }
+  try {
+    if (data.password) {
+      const salt = await bcrypt.genSalt(10);
+      data.password = await bcrypt.hash(data.password, salt);
+    }
 
-  return await User.findByIdAndUpdate(id, data, { new: true })
-    .select("-password")
-    .lean();
+    const updatedUser = await User.findByIdAndUpdate(id, data, { new: true })
+      .select("-password")
+      .lean();
+
+    if (!updatedUser) {
+      throw new Error("User not found");
+    }
+
+    return updatedUser;
+  } catch (error: any) {
+    if (error.name === "CastError") {
+      throw new Error("Invalid User ID format");
+    }
+    throw new Error(error.message || "Failed to update user");
+  }
 };
 
 export const deleteUser = async (
   id: string
 ): Promise<Partial<IUser> | null> => {
-  return await User.findByIdAndDelete(id).select("-password").lean();
-};
-
-export const getUserAssessmentSummary = async (
-  filters: { page?: number; limit?: number } = {}
-) => {
   try {
-    // Use defaults if not provided
-    const page = Number(filters.page ?? 1);
-    const limit = Number(filters.limit ?? 10);
-    const skip = (page - 1) * limit;
+    const deletedUser = await User.findByIdAndUpdate(
+      id,
+      { isActive: false },
+      { new: true }
+    )
+      .select("-password")
+      .lean();
 
-    // Total number of users for pagination
-    const total = await User.countDocuments();
+    if (!deletedUser) {
+      throw new Error("User not found");
+    }
 
-    // Aggregate users with latest attempt, total attempts, and populated quiz
-    const results = await User.aggregate([
-      {
-        $lookup: {
-          from: "quizattempts",
-          localField: "_id",
-          foreignField: "user",
-          as: "attempts",
-        },
-      },
-      {
-        $addFields: {
-          totalAttempts: { $size: "$attempts" },
-          latestAttempt: { $arrayElemAt: ["$attempts", -1] },
-        },
-      },
-      {
-        $lookup: {
-          from: "quizzes",
-          localField: "latestAttempt.quiz",
-          foreignField: "_id",
-          as: "latestAttempt.quiz",
-        },
-      },
-      {
-        $addFields: {
-          "latestAttempt.quiz": { $arrayElemAt: ["$latestAttempt.quiz", 0] },
-        },
-      },
-      {
-        $project: {
-          firstName: 1,
-          lastName: 1,
-          email: 1,
-          totalAttempts: 1,
-          latestAttempt: {
-            quiz: {
-              _id: 1,
-              title: 1,
-              description: 1,
-              totalMarks: 1,
-            },
-            score: 1,
-            percentage: 1,
-            status: 1,
-            completedAt: 1,
-          },
-        },
-      },
-      { $sort: { firstName: 1 } },
-      { $skip: skip },
-      { $limit: limit },
-    ]);
-
-    return {
-      page,
-      limit,
-      hasPrev: page > 1,
-      hasNext: skip + results.length < total,
-      total,
-      results,
-    };
+    return deletedUser;
   } catch (error: any) {
-    console.error(error);
-    throw new Error(error.message || "Internal Server Error");
+    if (error.name === "CastError") {
+      throw new Error("Invalid User ID format");
+    }
+    throw new Error(error.message || "Error deleting user");
   }
 };
 

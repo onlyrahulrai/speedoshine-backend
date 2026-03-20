@@ -1,26 +1,16 @@
-export interface FieldValidationError {
-  type?: string;
-  errors?: Record<string, string>;
-}
-
-export interface ErrorMessageResponse {
-  type?: string;
-  message?: string;
-}
-
 export interface SuccessMessageResponse {
   message: string;
 }
 
-export interface ErrorResponse {
+export interface ErrorMessageResponse {
   message?: string;
 }
 
-export interface ValidateError {
+export interface FieldValidationError {
   fields?: Record<string, string>;
 }
 
-export interface AccessDeniedErrorMessageResponse extends ErrorResponse { }
+export interface AccessDeniedErrorMessageResponse extends ErrorMessageResponse { }
 
 export interface PaginatedResponse<T> {
   page: number;
