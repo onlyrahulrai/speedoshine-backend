@@ -12,7 +12,7 @@ export interface IBlog extends Document {
   published: boolean;
   author: mongoose.Types.ObjectId;
   isActive: boolean;
-  isDeleted: boolean;
+  deletedAt: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -33,8 +33,8 @@ const BlogSchema: Schema = new Schema(
       ref: "User",
       required: true,
     },
-    isDeleted: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

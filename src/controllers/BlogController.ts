@@ -38,7 +38,6 @@ export class BlogController extends Controller {
     200,
     "List of blogs retrieved successfully"
   )
-  @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   @Response<ErrorMessageResponse>(400, API_MESSAGES.FETCH_LIST_FAILED)
   public async getBlogs(
     @Request() req: any,
@@ -59,7 +58,6 @@ export class BlogController extends Controller {
     200,
     "Blog retrieved successfully"
   )
-  @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   @Response<ErrorMessageResponse>(400, API_MESSAGES.FETCH_FAILED)
   public async getBlogById(
     @Request() req: any,

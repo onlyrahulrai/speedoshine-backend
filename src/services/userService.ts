@@ -28,7 +28,7 @@ export const getAllUsers = async (
 
     // fetch paginated users
     const results = await User.find(match)
-      .select("-password")
+      .select("-password -__v")
       .sort("-createdAt")
       .skip(skip)
       .limit(effectiveLimit)
@@ -115,10 +115,10 @@ export const deleteUser = async (
   try {
     const deletedUser = await User.findByIdAndUpdate(
       id,
-      { isActive: false },
+      { isActive: false, deletedAt: new Date() },
       { new: true }
     )
-      .select("-password")
+      .select("-password -__v")
       .lean();
 
     if (!deletedUser) {

@@ -5,7 +5,7 @@ import { USER_ROLES } from "../constraints/common";
 
 export const getAllBlogs = async (req: any, query: any): Promise<BlogListResponse> => {
   try {
-    const { page, limit, search, category, tag, author, status } = query;
+    const { page, limit, search, category, tag, author } = query;
 
     const user = req?.user;
 
@@ -14,12 +14,8 @@ export const getAllBlogs = async (req: any, query: any): Promise<BlogListRespons
     const skip = (effectivePage - 1) * effectiveLimit;
 
     const filter: any = {
-      isDeleted: false,
+      isActive: true,
     };
-
-    if (status === "active") {
-      filter.isActive = true;
-    }
 
     if (search) {
       filter.title = { $regex: search, $options: "i" };
@@ -170,7 +166,8 @@ export const deleteBlog = async (blogId: string) => {
       throw new Error("Blog not found");
     }
 
-    blog.isDeleted = true;
+    blog.isActive = false;
+    blog.deletedAt = new Date();
 
     await blog.save();
 

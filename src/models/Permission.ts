@@ -3,6 +3,8 @@ import mongoose, { Schema, Document } from "mongoose";
 export interface IPermission extends Document {
   name: string;
   code: string;
+  isActive: boolean;
+  deletedAt: Date;
 }
 
 const PermissionSchema: Schema = new Schema(
@@ -16,6 +18,8 @@ const PermissionSchema: Schema = new Schema(
       required: [true, "Code is required!"],
       unique: true,
     },
+    isActive: { type: Boolean, default: true },
+    deletedAt: { type: Date, default: null },
   },
   { timestamps: true }
 );

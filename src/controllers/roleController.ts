@@ -33,6 +33,7 @@ export class RoleController extends Controller {
   )
   @Middlewares(requirePermission(PERMISSIONS.ROLE_READ))
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+  @Response<AccessDeniedErrorMessageResponse>(403, "Access denied")
   @Response<ErrorMessageResponse>(400, API_MESSAGES.FETCH_LIST_FAILED)
   public async getRoles(@Query() page: number = 1, @Query() limit: number = 10, @Query() search?: string): Promise<RoleListResponse> {
     return await roleService.getAllRoles({ page, limit, search }) as unknown as RoleListResponse;
@@ -46,14 +47,15 @@ export class RoleController extends Controller {
     "Role retrieved successfully"
   )
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+  @Response<AccessDeniedErrorMessageResponse>(403, "Access denied")
   @Response<ErrorMessageResponse>(400, API_MESSAGES.FETCH_FAILED)
   public async getRole(@Path() id: string): Promise<RoleDetailsResponse | null> {
     return await roleService.getRoleById(id) as RoleDetailsResponse | null;
   }
 
-  // @Security("jwt")
+  @Security("jwt")
   @Post('/')
-  // @Middlewares(requirePermission(PERMISSIONS.ROLE_CREATE))
+  @Middlewares(requirePermission(PERMISSIONS.ROLE_CREATE))
   @SuccessResponse(201, "Role created successfully")
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
   @Response<AccessDeniedErrorMessageResponse>(403, "Access denied")

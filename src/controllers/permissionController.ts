@@ -33,6 +33,7 @@ export class PermissionController extends Controller {
   )
   @Middlewares(requirePermission(PERMISSIONS.PERMISSION_READ))
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+  @Response<AccessDeniedErrorMessageResponse>(403, "Access denied")
   @Response<ErrorMessageResponse>(400, API_MESSAGES.FETCH_LIST_FAILED)
   public async getPermissions(@Query() page: number = 1, @Query() limit: number = 10, @Query() search?: string): Promise<PermissionListResponse> {
     return await permissionService.getAllPermissions({ page, limit, search }) as unknown as PermissionListResponse;
@@ -46,6 +47,7 @@ export class PermissionController extends Controller {
     "Permission retrieved successfully"
   )
   @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+  @Response<AccessDeniedErrorMessageResponse>(403, "Access denied")
   @Response<ErrorMessageResponse>(400, API_MESSAGES.FETCH_FAILED)
   public async getPermission(@Path() id: string): Promise<PermissionDetailsResponse | null> {
     return await permissionService.getPermissionById(id) as PermissionDetailsResponse | null;

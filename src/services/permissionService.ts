@@ -10,7 +10,7 @@ export const getAllPermissions = async (query: Record<string, any>): Promise<Per
     const skip = (effectivePage - 1) * effectiveLimit;
 
     const filter: any = {
-      // isDeleted: false,
+      isActive: true,
     };
 
     if (search) {
@@ -101,7 +101,10 @@ export const deletePermission = async (
   id: string
 ): Promise<IPermission | null> => {
   try {
-    const deletedPermission = await Permission.findByIdAndDelete(id);
+    const deletedPermission = await Permission.findByIdAndUpdate(id, {
+      isActive: false,
+      deletedAt: new Date(),
+    }, { new: true }).select("-__v");
 
     if (!deletedPermission) {
       throw new Error("Permission not found");

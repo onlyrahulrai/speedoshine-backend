@@ -31,6 +31,7 @@ import { AuthenticationRequiredResponse } from "../types/schema/Auth";
 import { API_MESSAGES } from "../constraints/common";
 import { PERMISSIONS } from "../constraints/permissions";
 import { requirePermission } from "../middleware/requirePermission";
+import { validateManageUser } from "../helper/validators/user";
 
 @Route("users")
 @Tags("User")
@@ -98,6 +99,13 @@ export class UserController extends Controller {
     @Body() body: CreatUserRequest
   ): Promise<UserDetailsResponse | ErrorMessageResponse | FieldValidationError> {
     try {
+      const fields = await validateManageUser(body);
+
+      if (Object.keys(fields).length > 0) {
+        this.setStatus(422);
+        return { fields };
+      }
+
       return await UserService.createUser(body) as unknown as UserDetailsResponse;
     } catch (error: any) {
       this.setStatus(400);
@@ -122,6 +130,13 @@ export class UserController extends Controller {
     @Body() body: UpdateUserRequest
   ): Promise<UserDetailsResponse | ErrorMessageResponse | FieldValidationError> {
     try {
+      const fields = await validateManageUser(body, id);
+
+      if (Object.keys(fields).length > 0) {
+        this.setStatus(422);
+        return { fields };
+      }
+
       return await UserService.updateUser(id, body) as unknown as UserDetailsResponse;
     } catch (error: any) {
       this.setStatus(400);
@@ -142,10 +157,9 @@ export class UserController extends Controller {
   @Response<ErrorMessageResponse>(400, API_MESSAGES.DELETE_FAILED)
   public async deleteUser(
     @Path() id: string
-  ): Promise<SuccessMessageResponse | ErrorMessageResponse> {
+  ): Promise<UserDetailsResponse | ErrorMessageResponse> {
     try {
-      await UserService.deleteUser(id);
-      return { message: "User deleted successfully" };
+      return await UserService.deleteUser(id) as unknown as UserDetailsResponse;
     } catch (error: any) {
       this.setStatus(400);
       return { message: error.message || API_MESSAGES.DELETE_FAILED };
