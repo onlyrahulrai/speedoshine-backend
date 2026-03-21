@@ -204,12 +204,35 @@ export const continueWithGoogle = async (accessToken: string) => {
 
 export const editUserProfile = async (_id: string, data: EditProfileInput) => {
   try {
-    return await User.findByIdAndUpdate(_id, { $set: data }, { new: true }).select("-password -__v").populate([
+    const updateData: any = { ...data };
+
+    if (data.phone) {
+      updateData.isPhoneVerified = true;
+    }
+
+    const user = await User.findByIdAndUpdate(_id, { $set: updateData }, { new: true }).select("-password -__v").populate([
       {
         path: "roles",
         select: "name",
       },
     ]);
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const payload = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      roles: user.roles,
+    };
+
+    const access = generateToken(payload, "24h");
+    const refresh = generateToken(payload, "7d");
+
+    return { ...user.toObject(), access, refresh };
 
   } catch (error: any) {
     throw new Error(error.message || "Failed to edit user profile");
@@ -470,6 +493,8 @@ export const verifyPhoneOtp = async (phone?: string, otp?: string, type: string 
         user.isPhoneVerified = true;
         await user.save();
       }
+    } else if (type === "update") {
+      // Logic handled on frontend: once verified, the frontend will call editProfile with the new phone
     }
 
     // Delete the OTP record once verified
@@ -498,6 +523,12 @@ export const sendPhoneOtp = async (phone?: string, type: string = "signup") => {
 
       if (!user) {
         throw new Error("No account associated with this phone number. Please sign up first.");
+      }
+    } else if (type === "update") {
+      const user = await User.findOne({ phone });
+
+      if (user) {
+        throw new Error("This phone number is already registered to another account.");
       }
     }
 

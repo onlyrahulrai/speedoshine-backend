@@ -323,7 +323,7 @@ export class AuthController extends Controller {
 
   @Security("jwt")
   @Put("edit-profile")
-  @SuccessResponse<UserDetailsResponse>(200, "Profile updated successfully")
+  @SuccessResponse<AuthUserResponse>(200, "Profile updated successfully")
   @Response<ErrorMessageResponse>(400, "Invalid request parameters or format")
   @Response<FieldValidationError>(422, "One or more fields failed validation")
   @Response<AuthenticationRequiredResponse>(
@@ -334,7 +334,7 @@ export class AuthController extends Controller {
     @Request() req: any,
     @Body() body: EditProfileInput
   ): Promise<
-    | UserDetailsResponse
+    | AuthUserResponse
     | ErrorMessageResponse
     | FieldValidationError
     | AuthenticationRequiredResponse

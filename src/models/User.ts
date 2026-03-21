@@ -5,6 +5,8 @@ export interface IUser extends Document {
   email?: string;
   phone?: string;
   profile?: string;
+  bio?: string;
+  address?: string;
   password?: string;
   roles?: mongoose.Types.ObjectId[];
   isActive?: boolean;
@@ -24,6 +26,8 @@ const UserSchema: Schema = new Schema(
       required: true
     },
     profile: { type: String },
+    bio: { type: String },
+    address: { type: String },
     password: { type: String },
     roles: [{
       type: mongoose.Schema.Types.ObjectId,

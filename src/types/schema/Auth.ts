@@ -40,6 +40,8 @@ export interface EditProfileInput {
   email?: string;
   phone?: string;
   profile?: any;
+  bio?: string;
+  address?: string;
 }
 
 export interface AuthUserResponse extends UserDetailsResponse {
