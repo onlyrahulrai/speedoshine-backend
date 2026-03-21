@@ -15,7 +15,7 @@ const OTPSchema: Schema = new Schema(
     otp: { type: String, required: true },
     type: {
       type: String,
-      enum: ["login", "signup", "reset", "booking"],
+      enum: ["login", "signup", "reset", "booking", "update"],
       required: true,
     },
     attempts: { type: Number, default: 0 },
