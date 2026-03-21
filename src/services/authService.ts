@@ -116,6 +116,15 @@ export const loginUser = async (email: string, password: string) => {
       throw new Error("Invalid credentials");
     }
 
+    if (!user.isEmailVerified) {
+      await resendVerificationEmail(user);
+      throw new Error(`EMAIL_UNVERIFIED:${user.email}`);
+    }
+
+    if (!user.isPhoneVerified) {
+      throw new Error(`PHONE_UNVERIFIED:${user.phone}`);
+    }
+
     const payload = {
       _id: user._id,
       name: user.name,
@@ -165,8 +174,13 @@ export const continueWithGoogle = async (accessToken: string) => {
       user = await User.findById(newUser._id).populate([
         { path: "roles", select: "name" },
       ]);
-      
+
       if (!user) throw new Error("Failed to fetch newly created user");
+    }
+
+    if (!user.isEmailVerified) {
+      user.isEmailVerified = true;
+      await user.save();
     }
 
     const payload = {
@@ -553,6 +567,12 @@ export const loginWithOtp = async (phone: string, otp: string) => {
 
     // Delete the OTP record once verified
     await OTP.deleteOne({ _id: otpRecord._id });
+
+    // Auto-verify phone number if it was unverified since they logged in via OTP
+    if (!user.isPhoneVerified) {
+      user.isPhoneVerified = true;
+      await user.save();
+    }
 
     const payload = {
       _id: user._id,
