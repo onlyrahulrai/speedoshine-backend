@@ -84,9 +84,9 @@ export const validatePhone = (
   const phone = values.phone?.trim();
 
   if (!phone) {
-    errors.phone = "Mobile is required!";
+    errors.phone = "This field is required!";
   } else if (!regexPattern.test(phone)) {
-    errors.phone = "Mobile isn't valid!";
+    errors.phone = "This isn't valid!";
   }
 
   return errors;

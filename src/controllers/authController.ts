@@ -246,11 +246,11 @@ export class AuthController extends Controller {
     }
   }
 
-  @Post("resend-phone-otp")
+  @Post("send-phone-otp")
   @SuccessResponse(200, "Verification OTP resent")
   @Response<FieldValidationError>(422, "One or more fields failed validation")
   @Response<ErrorMessageResponse>(400, "Failed to resend Verification OTP")
-  public async resendPhoneOtp(
+  public async sendPhoneOtp(
     @Body() body: ResendPhoneOtpInput
   ): Promise<SuccessMessageResponse | FieldValidationError | ErrorMessageResponse> {
     try {
@@ -261,14 +261,40 @@ export class AuthController extends Controller {
         return { fields };
       }
 
-      await AuthService.resendPhoneOtp(body.phone, body.type);
+      await AuthService.sendPhoneOtp(body.phone, body.type);
 
       this.setStatus(200);
 
-      return { message: "Verification OTP has been resent" };
+      return { message: "Verification OTP has been sent" };
     } catch (error: any) {
       this.setStatus(400);
       return { message: error?.message || API_MESSAGES.OTP_FAILED };
+    }
+  }
+
+  @Post("login-with-otp")
+  @SuccessResponse<AuthUserResponse>(200, "OTP Login successful")
+  @Response<FieldValidationError>(422, "One or more fields failed validation")
+  @Response<ErrorMessageResponse>(400, "Invalid OTP or phone number")
+  public async loginWithOtp(
+    @Body() body: VerifyPhoneInput
+  ): Promise<AuthUserResponse | FieldValidationError | ErrorMessageResponse> {
+    try {
+      const fields = validateVerifyPhone(body);
+
+      if (Object.keys(fields).length > 0) {
+        this.setStatus(422);
+        return { fields };
+      }
+
+      const user = await AuthService.loginWithOtp(body.phone as string, body.otp as string);
+
+      this.setStatus(200);
+
+      return user as any;
+    } catch (error: any) {
+      this.setStatus(400);
+      return { message: error?.message || API_MESSAGES.LOGIN_FAILED };
     }
   }
 

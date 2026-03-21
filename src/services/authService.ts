@@ -413,7 +413,7 @@ export const verifyPhoneOtp = async (phone?: string, otp?: string, type: string 
   }
 };
 
-export const resendPhoneOtp = async (phone?: string, type: string = "signup") => {
+export const sendPhoneOtp = async (phone?: string, type: string = "signup") => {
   try {
     if (type === "signup") {
       const user = await User.findOne({ phone });
@@ -424,6 +424,12 @@ export const resendPhoneOtp = async (phone?: string, type: string = "signup") =>
 
       if (user.isPhoneVerified) {
         throw new Error("Phone number is already verified.");
+      }
+    } else if (type === "login") {
+      const user = await User.findOne({ phone });
+
+      if (!user) {
+        throw new Error("No account associated with this phone number. Please sign up first.");
       }
     }
 
@@ -456,5 +462,60 @@ export const resendPhoneOtp = async (phone?: string, type: string = "signup") =>
     return { message: "Verification OTP has been resent" };
   } catch (error: any) {
     throw new Error(error.message || "Failed to resend Verification OTP");
+  }
+};
+
+export const loginWithOtp = async (phone: string, otp: string) => {
+  try {
+    const user = await User.findOne({ phone }).populate([
+      {
+        path: "roles",
+        select: "name",
+      },
+    ]);
+
+    if (!user) {
+      throw new Error("No account associated with this phone number.");
+    }
+
+    // Find the current OTP record
+    const otpRecord = await OTP.findOne({ identifier: phone, type: "login" });
+
+    if (!otpRecord) {
+      throw new Error("OTP has expired or doesn't exist. Please request a new one.");
+    }
+
+    if (otpRecord.attempts >= 5) {
+      throw new Error("Too many failed attempts. Please request a new OTP.");
+    }
+
+    const isValid = await bcrypt.compare(otp, otpRecord.otp);
+
+    if (!isValid) {
+      otpRecord.attempts += 1;
+      await otpRecord.save();
+      throw new Error("Invalid OTP");
+    }
+
+    // Delete the OTP record once verified
+    await OTP.deleteOne({ _id: otpRecord._id });
+
+    const payload = {
+      _id: user._id,
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      roles: user.roles,
+    };
+
+    const access = generateToken(payload, "24h");
+
+    const refresh = generateToken(payload, "7d");
+
+    const { password: userPassword, __v, ...userData } = user.toObject();
+
+    return { ...userData, access, refresh };
+  } catch (error: any) {
+    throw new Error(error.message || "OTP Login failed");
   }
 };
