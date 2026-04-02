@@ -43,7 +43,7 @@ export const razorpay = async (req: any) => {
         }
 
         const transaction = await TransactionModel.findOne({
-            razorpay_order_id: payment.order_id,
+            provider_order_id: payment.order_id,
         });
 
         if (!transaction) {
@@ -54,13 +54,13 @@ export const razorpay = async (req: any) => {
             return { message: "Transaction already successful" };
         }
 
-        transaction.razorpay_payment_id = payment.id;
-        transaction.razorpay_event_id = eventId;
-        transaction.razorpay_signature = razorpay_signature;
+        transaction.provider_payment_id = payment.id;
+        transaction.provider_event_id = eventId;
+        transaction.provider_signature = razorpay_signature;
         transaction.payment_method = payment.method
         transaction.currency = payment.currency
-        transaction.razorpay_fee = payment.fee ?? 0;
-        transaction.razorpay_tax = payment.tax ?? 0;
+        transaction.provider_fee = payment.fee ?? 0;
+        transaction.provider_tax = payment.tax ?? 0;
         transaction.amount_refunded = payment.amount_refunded ?? 0;
         transaction.metadata = payment;
 
@@ -76,9 +76,6 @@ export const razorpay = async (req: any) => {
                 if (!transaction.resource?.id) {
                     throw new Error("Missing assessment reference");
                 }
-
-
-
             }
             return { message: "Payment processed successfully" };
         }

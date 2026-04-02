@@ -20,9 +20,12 @@ export enum TransactionStatus {
 ------------------------------------ */
 
 export interface ITransaction extends Document {
+  payment?: Types.ObjectId;
   user?: Types.ObjectId;
-  amount: number;
-  razorpay_order_id?: string;
+  amount: mongoose.Schema.Types.Decimal128;
+  currency: string;
+  provider: string;
+  provider_order_id?: string;
   transaction_type: TransactionType;
 
   resource?: {
@@ -31,17 +34,16 @@ export interface ITransaction extends Document {
   };
 
   transaction_status: TransactionStatus;
-  razorpay_payment_id?: string;
-  razorpay_signature?: string;
-  razorpay_event_id?: string;
+  provider_payment_id?: string;
+  provider_signature?: string;
+  provider_event_id?: string;
   paid_at?: Date;
   error_details?: string;
   metadata: Record<string, any>;
 
   payment_method?: string,
-  currency?: string,
-  razorpay_fee?: number,
-  razorpay_tax?: number,
+  provider_fee?: number,
+  provider_tax?: number,
   amount_refunded?: number,
   refund_status?: string,
 
@@ -55,6 +57,12 @@ export interface ITransaction extends Document {
 
 const TransactionSchema = new Schema<ITransaction>(
   {
+    payment: {
+      type: Schema.Types.ObjectId,
+      ref: "Payment",
+      index: true,
+    },
+
     user: {
       type: Schema.Types.ObjectId,
       ref: "User",
@@ -62,11 +70,23 @@ const TransactionSchema = new Schema<ITransaction>(
     },
 
     amount: {
-      type: Number,
+      type: mongoose.Schema.Types.Decimal128,
       required: true,
     },
 
-    razorpay_order_id: {
+    currency: {
+      type: String,
+      default: "INR",
+    },
+
+    // 🔥 Gateway fields
+    provider: {
+      type: String,
+      enum: ["RAZORPAY", "STRIPE"],
+      default: "RAZORPAY",
+    },
+
+    provider_order_id: {
       type: String,
       required: true,
     },
@@ -95,16 +115,16 @@ const TransactionSchema = new Schema<ITransaction>(
       index: true,
     },
 
-    razorpay_payment_id: {
+    provider_payment_id: {
       type: String,
       index: true
     },
 
-    razorpay_signature: {
+    provider_signature: {
       type: String,
     },
 
-    razorpay_event_id: {
+    provider_event_id: {
       type: String,
       index: true,
     },
@@ -122,9 +142,8 @@ const TransactionSchema = new Schema<ITransaction>(
     },
 
     payment_method: { type: String },
-    currency: { type: String, default: "INR" },
-    razorpay_fee: { type: Number },
-    razorpay_tax: { type: Number },
+    provider_fee: { type: Number },
+    provider_tax: { type: Number },
     amount_refunded: { type: Number, default: 0 },
     refund_status: { type: String },
   },
@@ -135,7 +154,7 @@ const TransactionSchema = new Schema<ITransaction>(
 
 /* Unique index to prevent duplicate orders */
 TransactionSchema.index(
-  { razorpay_order_id: 1 },
+  { provider_order_id: 1 },
   { unique: true }
 );
 

@@ -112,7 +112,7 @@ export const createTransaction = async (userId: string, values: Record<string, a
         const body: any = {
             user: new Types.ObjectId(userId),
             transaction_type,
-            razorpay_order_id: razorpayOrder.id,
+            provider_order_id: razorpayOrder.id,
             amount,
             transaction_status: TransactionStatus.PENDING,
         };
