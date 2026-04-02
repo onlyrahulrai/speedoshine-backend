@@ -19,7 +19,7 @@ export interface TransactionResponse {
     model: "Assessment";
   };
   transaction_status: TransactionStatus;
-  razorpay_payment_id?: string;
+  provider_payment_id?: string;
   error_details?: string;
   createdAt: Date;
   updatedAt: Date;
