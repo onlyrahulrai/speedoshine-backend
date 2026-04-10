@@ -1,5 +1,16 @@
 import mongoose, { Schema, Types } from "mongoose";
 
+const STATUS = [
+    "DRAFT",
+    "SUBMITTED",
+    "UNDER_REVIEW",
+    "APPROVED",
+    "ONBOARDING",
+    "GO_LIVE",
+    "ACTIVE",
+    "REJECTED",
+];
+
 const HistorySchema = new Schema(
     {
         franchise: {
@@ -9,38 +20,18 @@ const HistorySchema = new Schema(
             index: true,
         },
 
-        // 🔥 track transition properly
         fromStatus: {
             type: String,
-            enum: [
-                "DRAFT",
-                "SUBMITTED",
-                "UNDER_REVIEW",
-                "APPROVED",
-                "ONBOARDING",
-                "GO_LIVE",
-                "ACTIVE",
-                "REJECTED",
-            ],
+            enum: STATUS,
         },
 
         toStatus: {
             type: String,
-            enum: [
-                "DRAFT",
-                "SUBMITTED",
-                "UNDER_REVIEW",
-                "APPROVED",
-                "ONBOARDING",
-                "GO_LIVE",
-                "ACTIVE",
-                "REJECTED",
-            ],
+            enum: STATUS,
             required: true,
             index: true,
         },
 
-        // 🔥 proper user reference
         changedBy: {
             type: Types.ObjectId,
             ref: "User",
@@ -50,6 +41,13 @@ const HistorySchema = new Schema(
         changedByRole: {
             type: String,
             enum: ["ADMIN", "USER", "SYSTEM"],
+            required: true,
+        },
+
+        action: {
+            type: String,
+            enum: ["STATUS_CHANGE", "COMMENT", "AUTO_UPDATE"],
+            default: "STATUS_CHANGE",
         },
 
         reason: String,
@@ -57,14 +55,20 @@ const HistorySchema = new Schema(
         metadata: {
             type: Schema.Types.Mixed,
         },
-
-        changedAt: {
-            type: Date,
-            default: Date.now,
-            index: true,
-        },
     },
-    { timestamps: true }
+    { timestamps: { createdAt: "changedAt", updatedAt: false } }
 );
+
+HistorySchema.pre("save", function (next) {
+    if (
+        this.action === "STATUS_CHANGE" &&
+        this.fromStatus === this.toStatus
+    ) {
+        return next(new Error("Invalid status transition"));
+    }
+    next();
+});
+
+HistorySchema.index({ franchise: 1, changedAt: -1 });
 
 export default mongoose.model("History", HistorySchema);

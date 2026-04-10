@@ -1,8 +1,14 @@
 import mongoose, { Schema, Types } from "mongoose";
+import { v4 as uuidv4 } from "uuid";
 
 const FranchiseSchema = new Schema(
     {
-        franchiseId: { type: String, unique: true, index: true },
+        franchiseId: {
+            type: String,
+            unique: true,
+            index: true,
+            trim: true,
+        },
 
         owner: {
             type: Types.ObjectId,
@@ -10,14 +16,14 @@ const FranchiseSchema = new Schema(
             index: true,
         },
 
-        createdBy: {
+        applicant: {
             type: Types.ObjectId,
             ref: "User",
             required: true,
             index: true,
         },
 
-        createdByRole: {
+        applicantRole: {
             type: String,
             enum: ["ADMIN", "USER", "SYSTEM"],
             required: true,
@@ -27,68 +33,120 @@ const FranchiseSchema = new Schema(
         source: {
             type: String,
             enum: ["SELF_SIGNUP", "ADMIN_PANEL", "SALES_TEAM", "API"],
+            default: "SELF_SIGNUP",
         },
 
+        // -------------------------
+        // Basic Details
+        // -------------------------
         basicDetails: {
-            proprietorName: String,
-            contactNumber: String,
-            email: String,
-            address: String,
-            city: String,
-            district: String,
-            state: String,
-            country: String,
-            pincode: String,
+            proprietorName: { type: String, trim: true, required: true },
+            contactNumber: { type: String, trim: true, required: true },
+            email: { type: String, lowercase: true, trim: true },
+            address: { type: String, trim: true },
+            city: { type: String, trim: true },
+            district: { type: String, trim: true },
+            state: { type: String, trim: true },
+            country: { type: String, default: "India" },
+            pincode: { type: String, trim: true },
         },
 
+        // -------------------------
+        // Business Details
+        // -------------------------
         businessDetails: {
             preferredLocation: String,
             investmentCapacity: String,
-            isFullOwned: Boolean,
-            availableSpace: String,
-            preferredFranchiseModel: String,
+
+            isFullOwner: { type: Boolean, default: true },
+
+            availableSpace: Number,
+
+            preferredModel: {
+                type: String,
+                enum: ["COCO", "FOCO", "FOFO"],
+            },
+
             expectedTimeToStart: String,
-            doesHasExperience: Boolean,
+
+            businessExperience: { type: Boolean, default: false },
+
             outletDetails: String,
-            businessType: String,
-            panNumber: String,
-            gstNumber: String,
+
+            businessType: {
+                type: String,
+                enum: ["Individual", "Firm", "Company"],
+            },
+
+            panNumber: {
+                type: String,
+                uppercase: true,
+                trim: true,
+            },
+
+            gstNumber: {
+                type: String,
+                uppercase: true,
+                trim: true,
+            },
+
             sapCode: String,
             retailOutletDetails: String,
             whyFranchise: String,
             remarks: String,
-            totalFranchisesFee: Number,
+
+            totalFranchiseFee: { type: Number, default: 0 },
         },
 
+        // -------------------------
+        // Bank Details
+        // -------------------------
         bankDetails: {
             accountNumber: String,
             ifsc: String,
         },
 
+        // -------------------------
+        // Verification
+        // -------------------------
         verification: {
-            kycVerified: Boolean,
-            panVerified: Boolean,
-            aadhaarVerified: Boolean,
-            bankVerified: Boolean,
-            agreementSigned: Boolean,
-            termsAccepted: Boolean,
+            kycVerified: { type: Boolean, default: false },
+            panVerified: { type: Boolean, default: false },
+            aadhaarVerified: { type: Boolean, default: false },
+            bankVerified: { type: Boolean, default: false },
+            agreementSigned: { type: Boolean, default: false },
+            termsAccepted: { type: Boolean, default: false },
         },
 
+        // -------------------------
+        // Onboarding
+        // -------------------------
         onboarding: {
-            profileCreated: Boolean,
-            loginCredentialsSent: Boolean,
-            role: String,
-            permissions: [String],
+            profileCreated: { type: Boolean, default: false },
+            loginCredentialsSent: { type: Boolean, default: false },
+
+            role: {
+                type: String,
+                enum: ["owner", "manager", "staff"],
+            },
+
+            permissions: [{ type: String }],
         },
 
+        // -------------------------
+        // Go Live
+        // -------------------------
         goLive: {
-            trainingAssigned: Boolean,
-            trainingCompleted: Boolean,
-            catalogAccess: Boolean,
-            pricingConfigured: Boolean,
-            activated: Boolean,
+            trainingAssigned: { type: Boolean, default: false },
+            trainingCompleted: { type: Boolean, default: false },
+            catalogAccess: { type: Boolean, default: false },
+            pricingConfigured: { type: Boolean, default: false },
+            activated: { type: Boolean, default: false },
         },
 
+        // -------------------------
+        // Status
+        // -------------------------
         status: {
             type: String,
             enum: [
@@ -99,7 +157,9 @@ const FranchiseSchema = new Schema(
                 "ONBOARDING",
                 "GO_LIVE",
                 "ACTIVE",
+                "REJECTED",
             ],
+            default: "DRAFT",
             index: true,
         },
 
@@ -109,12 +169,43 @@ const FranchiseSchema = new Schema(
         },
 
         statusUpdatedAt: Date,
-
         statusReason: String,
 
-        isDeleted: { type: Boolean, default: false },
+        // -------------------------
+        // Soft Delete
+        // -------------------------
+        isDeleted: {
+            type: Boolean,
+            default: false,
+            index: true,
+        },
     },
     { timestamps: true }
 );
 
+// -------------------------
+// Indexes
+// -------------------------
+FranchiseSchema.index({ franchiseId: 1 });
+FranchiseSchema.index(
+    { "businessDetails.panNumber": 1 },
+    { unique: true, sparse: true }
+);
+FranchiseSchema.index({ status: 1, createdAt: -1 });
+FranchiseSchema.index({ isDeleted: 1, status: 1 });
+FranchiseSchema.index({
+    "basicDetails.proprietorName": "text",
+    "basicDetails.city": "text",
+});
+
+FranchiseSchema.pre("save", function (next) {
+    if (!this.franchiseId) {
+        this.franchiseId = `FR-${uuidv4().slice(0, 8)}`;
+    }
+    next();
+});
+
+// -------------------------
+// Export
+// -------------------------
 export default mongoose.model("Franchise", FranchiseSchema);
