@@ -71,12 +71,14 @@ const FranchiseSchema = new Schema(
 
             businessExperience: { type: Boolean, default: false },
 
-            outletDetails: String,
-
             businessType: {
                 type: String,
                 enum: ["Individual", "Firm", "Company"],
             },
+
+            remarks: String,
+
+            outletDetails: String,
 
             panNumber: {
                 type: String,
@@ -93,8 +95,6 @@ const FranchiseSchema = new Schema(
             sapCode: String,
             retailOutletDetails: String,
             whyFranchise: String,
-            remarks: String,
-
             totalFranchiseFee: { type: Number, default: 0 },
         },
 
