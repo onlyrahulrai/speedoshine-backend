@@ -76,7 +76,7 @@ const FranchiseSchema = new Schema(
                 enum: ["Individual", "Firm", "Company"],
             },
 
-            remarks: String,
+            experienceDescription: String,
 
             outletDetails: String,
 
@@ -110,12 +110,24 @@ const FranchiseSchema = new Schema(
         // Verification
         // -------------------------
         verification: {
+            // Documents
+            panCardDoc: String,
+            aadhaarCardDoc: String,
+            bankDetailsDoc: String,
+            sapCodeDoc: String,
+
+            // Text Fields
+            remarks: String,
+            
+            // Flags
             kycVerified: { type: Boolean, default: false },
             panVerified: { type: Boolean, default: false },
             aadhaarVerified: { type: Boolean, default: false },
             bankVerified: { type: Boolean, default: false },
             agreementSigned: { type: Boolean, default: false },
-            termsAccepted: { type: Boolean, default: false },
+            
+            // Required Consents
+            termsAccepted: { type: Boolean, default: false, required: true },
         },
 
         // -------------------------

@@ -25,11 +25,16 @@ export interface BusinessDetailsRequest {
     sapCode?: string;
     retailOutletDetails?: string;
     whyFranchise?: string;
-    remarks?: string;
+    experienceDescription?: string;
     totalFranchiseFee?: number;
 }
 
 export interface VerificationDetailsRequest {
+    panCardDoc?: string;
+    aadhaarCardDoc?: string;
+    bankDetailsDoc?: string;
+    sapCodeDoc?: string;
+    remarks?: string;
     kycVerified?: boolean;
     panVerified?: boolean;
     aadhaarVerified?: boolean;
