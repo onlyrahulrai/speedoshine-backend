@@ -71,12 +71,14 @@ const FranchiseSchema = new Schema(
 
             businessExperience: { type: Boolean, default: false },
 
-            outletDetails: String,
-
             businessType: {
                 type: String,
                 enum: ["Individual", "Firm", "Company"],
             },
+
+            experienceDescription: String,
+
+            outletDetails: String,
 
             panNumber: {
                 type: String,
@@ -93,8 +95,6 @@ const FranchiseSchema = new Schema(
             sapCode: String,
             retailOutletDetails: String,
             whyFranchise: String,
-            remarks: String,
-
             totalFranchiseFee: { type: Number, default: 0 },
         },
 
@@ -110,12 +110,24 @@ const FranchiseSchema = new Schema(
         // Verification
         // -------------------------
         verification: {
+            // Documents
+            panCardDoc: String,
+            aadhaarCardDoc: String,
+            bankDetailsDoc: String,
+            sapCodeDoc: String,
+
+            // Text Fields
+            remarks: String,
+            
+            // Flags
             kycVerified: { type: Boolean, default: false },
             panVerified: { type: Boolean, default: false },
             aadhaarVerified: { type: Boolean, default: false },
             bankVerified: { type: Boolean, default: false },
             agreementSigned: { type: Boolean, default: false },
-            termsAccepted: { type: Boolean, default: false },
+            
+            // Required Consents
+            termsAccepted: { type: Boolean, default: false, required: true },
         },
 
         // -------------------------
