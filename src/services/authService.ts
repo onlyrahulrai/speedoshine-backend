@@ -22,7 +22,7 @@ export const registerUser = async (data: RegisterInput) => {
   try {
     const role = await Role.findOne({
       name: "User",
-    });
+    }).select("name");
 
     if (!role) {
       throw new Error("Default role 'User' not found");
@@ -95,7 +95,7 @@ export const registerUser = async (data: RegisterInput) => {
     );
 
 
-    return userData;
+    return { ...userData, roles: [role] };
   } catch (error: any) {
     throw new Error(error.message || "Failed to register user.");
   }
@@ -605,12 +605,14 @@ export const loginWithOtp = async (phone: string, otp: string) => {
       await user.save();
     }
 
+    const roles = await Role.find({ _id: { $in: user.roles } }).select("name");
+
     const payload = {
       _id: user._id,
       name: user.name,
       email: user.email,
       phone: user.phone,
-      roles: user.roles,
+      roles: roles,
     };
 
     const access = generateToken(payload, "24h");

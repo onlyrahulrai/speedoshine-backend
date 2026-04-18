@@ -118,14 +118,14 @@ const FranchiseSchema = new Schema(
 
             // Text Fields
             remarks: String,
-            
+
             // Flags
             kycVerified: { type: Boolean, default: false },
             panVerified: { type: Boolean, default: false },
             aadhaarVerified: { type: Boolean, default: false },
             bankVerified: { type: Boolean, default: false },
             agreementSigned: { type: Boolean, default: false },
-            
+
             // Required Consents
             termsAccepted: { type: Boolean, default: false, required: true },
         },
@@ -198,7 +198,7 @@ const FranchiseSchema = new Schema(
 // -------------------------
 // Indexes
 // -------------------------
-FranchiseSchema.index({ franchiseId: 1 });
+
 FranchiseSchema.index(
     { "businessDetails.panNumber": 1 },
     { unique: true, sparse: true }
