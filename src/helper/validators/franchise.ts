@@ -36,18 +36,6 @@ export const validateApplyFranchiseStep = (
             fields.franchiseId = "Franchise ID is required for verification step";
         }
 
-        if (!body.verification?.panCardDoc) {
-            fields["verification.panCardDoc"] = "PAN Card document is required";
-        }
-
-        if (!body.verification?.aadhaarCardDoc) {
-            fields["verification.aadhaarCardDoc"] = "Aadhaar Card document is required";
-        }
-
-        if (!body.verification?.bankDetailsDoc) {
-            fields["verification.bankDetailsDoc"] = "Bank Details document is required";
-        }
-
         if (body.verification?.termsAccepted !== true) {
             fields["verification.termsAccepted"] = "Please accept the terms and conditions";
         }

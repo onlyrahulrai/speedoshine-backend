@@ -49,6 +49,7 @@ const FranchiseSchema = new Schema(
             state: { type: String, trim: true },
             country: { type: String, default: "India" },
             pincode: { type: String, trim: true },
+            aadhaarNumber: { type: String, trim: true },
         },
 
         // -------------------------
@@ -67,7 +68,7 @@ const FranchiseSchema = new Schema(
                 enum: ["COCO", "FOCO", "FOFO"],
             },
 
-            expectedTimeToStart: String,
+            expectedTimeline: String,
 
             businessExperience: { type: Boolean, default: false },
 
@@ -93,9 +94,9 @@ const FranchiseSchema = new Schema(
             },
 
             sapCode: String,
-            retailOutletDetails: String,
             whyFranchise: String,
             totalFranchiseFee: { type: Number, default: 0 },
+            remarks: String,
         },
 
         // -------------------------
@@ -110,22 +111,15 @@ const FranchiseSchema = new Schema(
         // Verification
         // -------------------------
         verification: {
-            // Documents
-            panCardDoc: String,
-            aadhaarCardDoc: String,
-            bankDetailsDoc: String,
-            sapCodeDoc: String,
-
-            // Text Fields
-            remarks: String,
-            
             // Flags
             kycVerified: { type: Boolean, default: false },
-            panVerified: { type: Boolean, default: false },
-            aadhaarVerified: { type: Boolean, default: false },
-            bankVerified: { type: Boolean, default: false },
+            kycDetails: {
+                panVerified: { type: Boolean, default: false },
+                aadhaarVerified: { type: Boolean, default: false },
+                bankVerified: { type: Boolean, default: false },
+            },
             agreementSigned: { type: Boolean, default: false },
-            
+
             // Required Consents
             termsAccepted: { type: Boolean, default: false, required: true },
         },
@@ -154,6 +148,7 @@ const FranchiseSchema = new Schema(
             catalogAccess: { type: Boolean, default: false },
             pricingConfigured: { type: Boolean, default: false },
             activated: { type: Boolean, default: false },
+            activationDate: Date,
         },
 
         // -------------------------
@@ -198,7 +193,7 @@ const FranchiseSchema = new Schema(
 // -------------------------
 // Indexes
 // -------------------------
-FranchiseSchema.index({ franchiseId: 1 });
+
 FranchiseSchema.index(
     { "businessDetails.panNumber": 1 },
     { unique: true, sparse: true }
