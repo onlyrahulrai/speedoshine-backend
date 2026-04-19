@@ -8,6 +8,7 @@ export interface BasicDetailsRequest {
     state?: string;
     country?: string;
     pincode?: string;
+    aadhaarNumber?: string;
 }
 
 export interface BusinessDetailsRequest {
@@ -16,29 +17,26 @@ export interface BusinessDetailsRequest {
     isFullOwner?: boolean;
     availableSpace?: number;
     preferredModel?: "COCO" | "FOCO" | "FOFO";
-    expectedTimeToStart?: string;
+    expectedTimeline?: string;
     businessExperience?: boolean;
-    outletDetails?: string;
     businessType?: "Individual" | "Firm" | "Company";
+    experienceDescription?: string;
+    outletDetails?: string;
     panNumber?: string;
     gstNumber?: string;
     sapCode?: string;
-    retailOutletDetails?: string;
     whyFranchise?: string;
-    experienceDescription?: string;
+    remarks?: string;
     totalFranchiseFee?: number;
 }
 
 export interface VerificationDetailsRequest {
-    panCardDoc?: string;
-    aadhaarCardDoc?: string;
-    bankDetailsDoc?: string;
-    sapCodeDoc?: string;
-    remarks?: string;
     kycVerified?: boolean;
-    panVerified?: boolean;
-    aadhaarVerified?: boolean;
-    bankVerified?: boolean;
+    kycDetails?: {
+        panVerified?: boolean;
+        aadhaarVerified?: boolean;
+        bankVerified?: boolean;
+    };
     agreementSigned?: boolean;
     termsAccepted?: boolean;
 }
@@ -48,7 +46,6 @@ export interface ApplyFranchiseRequest {
     basicDetails?: BasicDetailsRequest;
     businessDetails?: BusinessDetailsRequest;
     verification?: VerificationDetailsRequest;
-    source?: string;
 }
 
 export interface FranchiseResponse {
