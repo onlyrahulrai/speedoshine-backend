@@ -1,6 +1,8 @@
 import {
     Controller,
+    Get,
     Post,
+    Path,
     Route,
     Tags,
     Body,
@@ -68,6 +70,49 @@ export class FranchiseController extends Controller {
 
             return {
                 message: error.message || "Failed to process franchise application",
+            };
+        }
+    }
+
+    /**
+     * Retrieves all franchise applications submitted by the logged-in user.
+     */
+    @Security("jwt")
+    @Get("/")
+    @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+    @Response<ErrorMessageResponse>(400, "Failed to retrieve applications")
+    public async getMyApplications(
+        @Request() req: any
+    ): Promise<FranchiseResponse[]> {
+        const userId = req.user?._id;
+        return (await franchiseService.getFranchiseApplicationsByUser(
+            userId
+        )) as unknown as FranchiseResponse[];
+    }
+
+    /**
+     * Retrieves the full details of a specific franchise application for the dossier view.
+     */
+    @Security("jwt")
+    @Get("/{id}")
+    @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+    @Response<ErrorMessageResponse>(404, "Application not found")
+    public async getApplicationDetail(
+        @Request() req: any,
+        @Path() id: string
+    ): Promise<FranchiseResponse | ErrorMessageResponse> {
+        try {
+            const userId = req.user?._id;
+            const application = await franchiseService.getFranchiseApplicationById(
+                id,
+                userId
+            );
+
+            return application as unknown as FranchiseResponse;
+        } catch (error: any) {
+            this.setStatus(404);
+            return {
+                message: error.message || "Application not found",
             };
         }
     }

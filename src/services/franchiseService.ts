@@ -86,3 +86,36 @@ export const saveFranchiseApplicationStep = async (
     }
 };
 
+/**
+ * Retrieves all franchise applications associated with a specific user.
+ */
+export const getFranchiseApplicationsByUser = async (userId: string) => {
+    try {
+        return await Franchise.find(
+            { applicant: userId, isDeleted: false },
+        ).sort({ updatedAt: -1 });
+    } catch (error) {
+        throw new Error("Failed to retrieve applications");
+    }
+};
+
+/**
+ * Retrieves the full detail of a specific franchise application for the Dossier view.
+ */
+export const getFranchiseApplicationById = async (franchiseId: string, userId: string) => {
+    try {
+        const application = await Franchise.findOne({
+            franchiseId: franchiseId,
+            applicant: userId,
+            isDeleted: false,
+        });
+
+        if (!application) {
+            throw new Error("Application not found or unauthorized access to dossier");
+        }
+
+        return application;
+    } catch (error: any) {
+        throw new Error(error.message || "Failed to retrieve application details");
+    }
+};
