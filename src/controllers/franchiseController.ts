@@ -33,7 +33,7 @@ export class FranchiseController extends Controller {
     @Response<ErrorMessageResponse>(400, "Failed to process franchise application")
     public async applyFranchise(
         @Request() req: any,
-        @Query() step: "BASIC" | "BUSINESS" | "VERIFICATION",
+        @Query() step: "BASIC" | "BUSINESS" | "BANK_DETAILS" | "VERIFICATION",
         @Body() body: ApplyFranchiseRequest
     ): Promise<FranchiseResponse | ErrorMessageResponse | FieldValidationError> {
         try {

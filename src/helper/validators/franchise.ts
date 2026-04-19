@@ -1,7 +1,7 @@
 import { ApplyFranchiseRequest } from "../../types/schema/Franchise";
 
 export const validateApplyFranchiseStep = (
-    step: "BASIC" | "BUSINESS" | "VERIFICATION",
+    step: "BASIC" | "BUSINESS" | "BANK_DETAILS" | "VERIFICATION",
     body: ApplyFranchiseRequest
 ): Record<string, string> => {
     const fields: Record<string, string> = {};

@@ -3,11 +3,11 @@ import { ApplyFranchiseRequest } from "../types/schema/Franchise";
 
 export const saveFranchiseApplicationStep = async (
     userId: string,
-    step: "BASIC" | "BUSINESS" | "VERIFICATION",
+    step: "BASIC" | "BUSINESS" | "BANK_DETAILS" | "VERIFICATION",
     data: ApplyFranchiseRequest
 ) => {
     try {
-        const { franchiseId, basicDetails, businessDetails, verification } = data;
+        const { franchiseId, basicDetails, businessDetails, verification, bankDetails } = data;
 
         // STEP 1: BASIC (Create or Update)
         if (step === "BASIC") {
@@ -57,6 +57,8 @@ export const saveFranchiseApplicationStep = async (
 
         if (step === "BUSINESS" && businessDetails) {
             application.businessDetails = { ...application.businessDetails, ...businessDetails };
+        } else if (step === "BANK_DETAILS" && bankDetails) {
+            application.bankDetails = { ...application.bankDetails, ...bankDetails };
         } else if (step === "VERIFICATION" && verification) {
             application.verification = { ...application.verification, ...verification };
 

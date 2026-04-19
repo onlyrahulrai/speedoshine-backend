@@ -41,10 +41,16 @@ export interface VerificationDetailsRequest {
     termsAccepted?: boolean;
 }
 
+export interface BankDetailsRequest {
+    accountNumber?: string;
+    ifsc?: string;
+}
+
 export interface ApplyFranchiseRequest {
     franchiseId?: string;
     basicDetails?: BasicDetailsRequest;
     businessDetails?: BusinessDetailsRequest;
+    bankDetails?: BankDetailsRequest;
     verification?: VerificationDetailsRequest;
 }
 
