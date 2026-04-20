@@ -75,6 +75,54 @@ export class FranchiseController extends Controller {
     }
 
     /**
+     * Admin-initiated franchise registration
+     */
+    @Security("jwt")
+    @Post("/register")
+    @SuccessResponse(200, "Franchise registration processed successfully")
+    @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+    @Response<FieldValidationError>(422, "Validation Failed")
+    @Response<ErrorMessageResponse>(400, "Failed to register franchise")
+    public async registerFranchise(
+        @Request() req: any,
+        @Query() step: "BASIC" | "BUSINESS" | "BANK_DETAILS" | "VERIFICATION",
+        @Body() body: ApplyFranchiseRequest
+    ): Promise<FranchiseResponse | ErrorMessageResponse | FieldValidationError> {
+        try {
+            const userId = req.user?._id;
+            const userRole = req.user?.role || "USER";
+
+            if (!userId) {
+                this.setStatus(401);
+                return { message: "Authentication required" };
+            }
+
+            // 1. Validate the request body
+            const fields = validateApplyFranchiseStep(step, body);
+            if (Object.keys(fields).length > 0) {
+                this.setStatus(422);
+                return { fields };
+            }
+
+            // 2. Delegate with ADMIN context
+            const result = await franchiseService.saveFranchiseApplicationStep(
+                userId,
+                step,
+                body,
+                { source: "ADMIN_PANEL", role: "ADMIN" }
+            );
+
+            this.setStatus(body.franchiseId ? 200 : 201);
+            return result as unknown as FranchiseResponse;
+        } catch (error: any) {
+            this.setStatus(400);
+            return {
+                message: error.message || "Failed to process franchise registration",
+            };
+        }
+    }
+
+    /**
      * Retrieves all franchise applications submitted by the logged-in user.
      */
     @Security("jwt")

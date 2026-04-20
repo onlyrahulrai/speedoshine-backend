@@ -30,6 +30,15 @@ export interface BusinessDetailsRequest {
     totalFranchiseFee?: number;
 }
 
+export interface BankDetailsRequest {
+    accountNumber?: string;
+    ifsc?: string;
+    bookingFeeAmount?: number;
+    bookingFeeStatus?: "Paid" | "Pending" | "Failed" | "Partial";
+    paymentMode?: string;
+    transactionNumber?: string;
+}
+
 export interface VerificationDetailsRequest {
     kycVerified?: boolean;
     kycDetails?: {
@@ -39,11 +48,6 @@ export interface VerificationDetailsRequest {
     };
     agreementSigned?: boolean;
     termsAccepted?: boolean;
-}
-
-export interface BankDetailsRequest {
-    accountNumber?: string;
-    ifsc?: string;
 }
 
 export interface ApplyFranchiseRequest {
@@ -61,6 +65,7 @@ export interface FranchiseResponse {
     status: string;
     basicDetails?: BasicDetailsRequest;
     businessDetails?: BusinessDetailsRequest;
+    bankDetails?: BankDetailsRequest;
     verification?: VerificationDetailsRequest;
     createdAt: string;
     updatedAt: string;
