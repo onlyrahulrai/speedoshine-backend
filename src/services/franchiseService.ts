@@ -3,11 +3,12 @@ import { ApplyFranchiseRequest } from "../types/schema/Franchise";
 
 export const saveFranchiseApplicationStep = async (
     userId: string,
-    step: "BASIC" | "BUSINESS" | "VERIFICATION",
-    data: ApplyFranchiseRequest
+    step: "BASIC" | "BUSINESS" | "BANK_DETAILS" | "VERIFICATION",
+    data: ApplyFranchiseRequest,
+    options: { source?: "SELF_SIGNUP" | "ADMIN_PANEL"; role?: "USER" | "ADMIN" } = { source: "SELF_SIGNUP", role: "USER" }
 ) => {
     try {
-        const { franchiseId, basicDetails, businessDetails, verification } = data;
+        const { franchiseId, basicDetails, businessDetails, verification, bankDetails } = data;
 
         // STEP 1: BASIC (Create or Update)
         if (step === "BASIC") {
@@ -15,9 +16,9 @@ export const saveFranchiseApplicationStep = async (
                 // Create new application draft
                 const newFranchise = new Franchise({
                     applicant: userId,
-                    owner: userId, // Assuming applicant is the owner initially
-                    applicantRole: "USER", // Default role for self signup
-                    source: "SELF_SIGNUP",
+                    owner: userId, // Initially owner is applicant
+                    applicantRole: options.role || "USER",
+                    source: options.source || "SELF_SIGNUP",
                     status: "DRAFT",
                     basicDetails: basicDetails || {},
                 });
@@ -25,11 +26,11 @@ export const saveFranchiseApplicationStep = async (
                 return await newFranchise.save();
             } else {
                 // Update existing draft's basic details
-                const application = await Franchise.findOne({
-                    franchiseId: franchiseId,
-                    applicant: userId,
-                    isDeleted: false,
-                });
+                // No need for strict applicant check only if admin
+                const filter: any = { franchiseId, isDeleted: false };
+                if (options.role !== "ADMIN") filter.applicant = userId;
+
+                const application = await Franchise.findOne(filter);
 
                 if (!application) {
                     throw new Error("Franchise application not found or unauthorized");
@@ -40,16 +41,15 @@ export const saveFranchiseApplicationStep = async (
             }
         }
 
-        // STEPS 2 & 3: BUSINESS and VERIFICATION (Requires franchiseId)
+        // STEPS 2, 3 & 4: BUSINESS, BANK_DETAILS, and VERIFICATION
         if (!franchiseId) {
             throw new Error("Franchise ID is required to progress application");
         }
 
-        const application = await Franchise.findOne({
-            franchiseId: franchiseId,
-            applicant: userId,
-            isDeleted: false,
-        });
+        const filter: any = { franchiseId, isDeleted: false };
+        if (options.role !== "ADMIN") filter.applicant = userId;
+
+        const application = await Franchise.findOne(filter);
 
         if (!application) {
             throw new Error("Franchise application not found or unauthorized");
@@ -57,6 +57,8 @@ export const saveFranchiseApplicationStep = async (
 
         if (step === "BUSINESS" && businessDetails) {
             application.businessDetails = { ...application.businessDetails, ...businessDetails };
+        } else if (step === "BANK_DETAILS" && bankDetails) {
+            application.bankDetails = { ...application.bankDetails, ...bankDetails };
         } else if (step === "VERIFICATION" && verification) {
             application.verification = { ...application.verification, ...verification };
 
@@ -71,16 +73,42 @@ export const saveFranchiseApplicationStep = async (
         return await application.save();
     } catch (error: any) {
         console.log("Error: ", error);
-
-        if (error.name === "CastError") {
-            throw new Error("Invalid format provided");
-        }
-        // Differentiate custom errors from unhandled mongoose errors
-        if (error.code === 11000) {
-            throw new Error("Duplicate entry. A franchise with this unique field already exists.");
-        }
-
+        if (error.name === "CastError") throw new Error("Invalid format provided");
+        if (error.code === 11000) throw new Error("Duplicate entry. A franchise with this unique field already exists.");
         throw new Error(error.message || "Failed to save franchise application");
     }
 };
 
+/**
+ * Retrieves all franchise applications associated with a specific user.
+ */
+export const getFranchiseApplicationsByUser = async (userId: string) => {
+    try {
+        return await Franchise.find(
+            { applicant: userId, isDeleted: false },
+        ).sort({ updatedAt: -1 });
+    } catch (error) {
+        throw new Error("Failed to retrieve applications");
+    }
+};
+
+/**
+ * Retrieves the full detail of a specific franchise application for the Dossier view.
+ */
+export const getFranchiseApplicationById = async (franchiseId: string, userId: string) => {
+    try {
+        const application = await Franchise.findOne({
+            franchiseId: franchiseId,
+            applicant: userId,
+            isDeleted: false,
+        });
+
+        if (!application) {
+            throw new Error("Application not found or unauthorized access to dossier");
+        }
+
+        return application;
+    } catch (error: any) {
+        throw new Error(error.message || "Failed to retrieve application details");
+    }
+};

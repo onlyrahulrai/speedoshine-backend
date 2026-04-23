@@ -1,6 +1,8 @@
 import {
     Controller,
+    Get,
     Post,
+    Path,
     Route,
     Tags,
     Body,
@@ -33,7 +35,7 @@ export class FranchiseController extends Controller {
     @Response<ErrorMessageResponse>(400, "Failed to process franchise application")
     public async applyFranchise(
         @Request() req: any,
-        @Query() step: "BASIC" | "BUSINESS" | "VERIFICATION",
+        @Query() step: "BASIC" | "BUSINESS" | "BANK_DETAILS" | "VERIFICATION",
         @Body() body: ApplyFranchiseRequest
     ): Promise<FranchiseResponse | ErrorMessageResponse | FieldValidationError> {
         try {
@@ -68,6 +70,97 @@ export class FranchiseController extends Controller {
 
             return {
                 message: error.message || "Failed to process franchise application",
+            };
+        }
+    }
+
+    /**
+     * Admin-initiated franchise registration
+     */
+    @Security("jwt")
+    @Post("/register")
+    @SuccessResponse(200, "Franchise registration processed successfully")
+    @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+    @Response<FieldValidationError>(422, "Validation Failed")
+    @Response<ErrorMessageResponse>(400, "Failed to register franchise")
+    public async registerFranchise(
+        @Request() req: any,
+        @Query() step: "BASIC" | "BUSINESS" | "BANK_DETAILS" | "VERIFICATION",
+        @Body() body: ApplyFranchiseRequest
+    ): Promise<FranchiseResponse | ErrorMessageResponse | FieldValidationError> {
+        try {
+            const userId = req.user?._id;
+            const userRole = req.user?.role || "USER";
+
+            if (!userId) {
+                this.setStatus(401);
+                return { message: "Authentication required" };
+            }
+
+            // 1. Validate the request body
+            const fields = validateApplyFranchiseStep(step, body);
+            if (Object.keys(fields).length > 0) {
+                this.setStatus(422);
+                return { fields };
+            }
+
+            // 2. Delegate with ADMIN context
+            const result = await franchiseService.saveFranchiseApplicationStep(
+                userId,
+                step,
+                body,
+                { source: "ADMIN_PANEL", role: "ADMIN" }
+            );
+
+            this.setStatus(body.franchiseId ? 200 : 201);
+            return result as unknown as FranchiseResponse;
+        } catch (error: any) {
+            this.setStatus(400);
+            return {
+                message: error.message || "Failed to process franchise registration",
+            };
+        }
+    }
+
+    /**
+     * Retrieves all franchise applications submitted by the logged-in user.
+     */
+    @Security("jwt")
+    @Get("/")
+    @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+    @Response<ErrorMessageResponse>(400, "Failed to retrieve applications")
+    public async getMyApplications(
+        @Request() req: any
+    ): Promise<FranchiseResponse[]> {
+        const userId = req.user?._id;
+        return (await franchiseService.getFranchiseApplicationsByUser(
+            userId
+        )) as unknown as FranchiseResponse[];
+    }
+
+    /**
+     * Retrieves the full details of a specific franchise application for the dossier view.
+     */
+    @Security("jwt")
+    @Get("/{id}")
+    @Response<AuthenticationRequiredResponse>(401, "Authentication required")
+    @Response<ErrorMessageResponse>(404, "Application not found")
+    public async getApplicationDetail(
+        @Request() req: any,
+        @Path() id: string
+    ): Promise<FranchiseResponse | ErrorMessageResponse> {
+        try {
+            const userId = req.user?._id;
+            const application = await franchiseService.getFranchiseApplicationById(
+                id,
+                userId
+            );
+
+            return application as unknown as FranchiseResponse;
+        } catch (error: any) {
+            this.setStatus(404);
+            return {
+                message: error.message || "Application not found",
             };
         }
     }
