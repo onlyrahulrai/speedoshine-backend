@@ -70,3 +70,12 @@ export interface FranchiseResponse {
     createdAt: string;
     updatedAt: string;
 }
+
+export interface FranchiseListResponse {
+    page: number;
+    limit: number;
+    total: number;
+    has_next: boolean;
+    has_prev: boolean;
+    results: FranchiseResponse[];
+}

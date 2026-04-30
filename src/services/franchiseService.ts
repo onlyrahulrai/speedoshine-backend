@@ -80,13 +80,36 @@ export const saveFranchiseApplicationStep = async (
 };
 
 /**
- * Retrieves all franchise applications associated with a specific user.
+ * Retrieves all franchise applications. If not an admin, retrieves only those associated with the specific user.
  */
-export const getFranchiseApplicationsByUser = async (userId: string) => {
+export const getFranchiseApplications = async (userId: string, isAdmin: boolean = false, filters: { status?: string; page?: string; limit?: string } = {}) => {
     try {
-        return await Franchise.find(
-            { applicant: userId, isDeleted: false },
-        ).sort({ updatedAt: -1 });
+        const query: any = { isDeleted: false };
+
+        if (!isAdmin) {
+            query.applicant = userId;
+        }
+
+        if (filters.status) {
+            query.status = filters.status;
+        }
+
+        const page = parseInt(filters.page || "1");
+        const limit = parseInt(filters.limit || "10");
+        const skip = (page - 1) * limit;
+
+        const total = await Franchise.countDocuments(query);
+
+        const results = await Franchise.find(query).select("-__v").skip(skip).limit(limit).sort({ updatedAt: -1 }).lean();
+
+        return {
+            page,
+            limit,
+            total,
+            has_next: skip + results.length < total,
+            has_prev: page > 1,
+            results
+        }
     } catch (error) {
         throw new Error("Failed to retrieve applications");
     }
@@ -95,13 +118,15 @@ export const getFranchiseApplicationsByUser = async (userId: string) => {
 /**
  * Retrieves the full detail of a specific franchise application for the Dossier view.
  */
-export const getFranchiseApplicationById = async (franchiseId: string, userId: string) => {
+export const getFranchiseApplicationById = async (_id: string, userId: string, isAdmin: boolean = false) => {
     try {
-        const application = await Franchise.findOne({
-            franchiseId: franchiseId,
-            applicant: userId,
-            isDeleted: false,
-        });
+        const query: any = { _id, isDeleted: false };
+
+        if (!isAdmin) {
+            query.applicant = userId;
+        }
+
+        const application = await Franchise.findOne(query);
 
         if (!application) {
             throw new Error("Application not found or unauthorized access to dossier");

@@ -15,6 +15,7 @@ import {
 import * as franchiseService from "../services/franchiseService";
 import {
     ApplyFranchiseRequest,
+    FranchiseListResponse,
     FranchiseResponse,
 } from "../types/schema/Franchise";
 import {
@@ -129,13 +130,24 @@ export class FranchiseController extends Controller {
     @Get("/")
     @Response<AuthenticationRequiredResponse>(401, "Authentication required")
     @Response<ErrorMessageResponse>(400, "Failed to retrieve applications")
-    public async getMyApplications(
-        @Request() req: any
-    ): Promise<FranchiseResponse[]> {
+    public async getApplications(
+        @Request() req: any,
+        @Query() status?: string,
+        @Query() page?: string,
+        @Query() limit?: string
+    ): Promise<FranchiseListResponse> {
         const userId = req.user?._id;
-        return (await franchiseService.getFranchiseApplicationsByUser(
-            userId
-        )) as unknown as FranchiseResponse[];
+
+        const isAdmin = req.user?.roles?.map((role: any) => role.name).includes("Admin");
+
+        return (await franchiseService.getFranchiseApplications(
+            userId,
+            isAdmin, {
+            status,
+            page,
+            limit
+        }
+        )) as unknown as FranchiseListResponse;
     }
 
     /**
@@ -151,9 +163,13 @@ export class FranchiseController extends Controller {
     ): Promise<FranchiseResponse | ErrorMessageResponse> {
         try {
             const userId = req.user?._id;
+
+            const isAdmin = req.user?.roles?.map((role: any) => role.name).includes("Admin");
+
             const application = await franchiseService.getFranchiseApplicationById(
                 id,
-                userId
+                userId,
+                isAdmin
             );
 
             return application as unknown as FranchiseResponse;
