@@ -1,5 +1,5 @@
 ### Start Server with PM2
-Use the following command to run the server with **PM2**, giving it a custom name (`digitaldetoxification`) and using `tsx` as the TypeScript interpreter:
+Use the following command to run the server with **PM2**, giving it a custom name (`digitaldetoxification`) and using `tsx` as the TypeScript interpreter: 
 
 ```bash
 pm2 start src/server.ts --name digitaldetoxification --interpreter tsx
